@@ -200,7 +200,7 @@
     <!-- ==================== SCANNER VIEW ==================== -->
     <div id="view-scanner" class="view-section flex-col bg-black z-50">
         <div class="absolute top-0 w-full p-6 flex justify-between items-center z-20 bg-gradient-to-b from-black/90 to-transparent">
-            <button onclick="stopScanner()" class="p-3 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition">
+            <button onclick="navigate('view-home')" class="p-3 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition">
                 <i class="ph ph-x text-xl"></i>
             </button>
             <div class="bg-black/40 backdrop-blur-md border border-white/10 px-4 py-1.5 rounded-full flex items-center gap-2">
@@ -486,6 +486,7 @@
         };
         let activePassId = null;
         let html5QrcodeScanner = null;
+        let isScannerInitialized = false;
 
         // --- Gradients Library ---
         const gradients = [
@@ -510,8 +511,11 @@
 
         // --- Navigation ---
         function navigate(viewId) {
-            // Stop scanner if leaving scanner
-            if(html5QrcodeScanner && html5QrcodeScanner.isScanning) stopScanner();
+            // Safety check: if leaving scanner, shut it down correctly
+            const currentView = document.querySelector('.view-section.active');
+            if (currentView && currentView.id === 'view-scanner') {
+                stopScanner();
+            }
             
             document.querySelectorAll('.view-section').forEach(el => {
                 el.classList.remove('active');
@@ -558,6 +562,7 @@
         // --- Editor: Visuals ---
         function generateGradientPicker() {
             const container = document.getElementById('art-gradient-panel');
+            if(!container) return;
             container.innerHTML = gradients.map(g => `
                 <div onclick="selectGradient('${g}')" class="aspect-square rounded-full cursor-pointer hover:scale-110 transition border border-white/10" style="background: ${g}"></div>
             `).join('');
@@ -595,19 +600,15 @@
             if(file) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    // Compress image
                     const img = new Image();
                     img.src = e.target.result;
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
-                        // Max width 600px
                         const scale = 600 / img.width;
                         canvas.width = 600;
                         canvas.height = img.height * scale;
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        
-                        // Save as highish quality jpeg
                         tempPass.bg = `url(${canvas.toDataURL('image/jpeg', 0.8)})`;
                         tempPass.bgType = 'image';
                         updateEditorPreview();
@@ -618,13 +619,12 @@
         }
 
         function updateEditorPreview() {
-            // Update State
             tempPass.category = document.getElementById('inp-category').value;
             tempPass.icon = document.getElementById('inp-icon').value;
             const title = document.getElementById('inp-title').value || "Pass Name";
 
-            // Update DOM
             const card = document.getElementById('editor-preview');
+            if(!card) return;
             card.style.background = tempPass.bg;
             card.style.backgroundSize = "cover";
             card.style.backgroundPosition = "center";
@@ -637,25 +637,45 @@
         // --- Scanning & Manual Input ---
         function startScanner() {
             navigate('view-scanner');
+            // Clean up existing instance if any
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.clear();
+            }
+            
             html5QrcodeScanner = new Html5Qrcode("reader");
+            isScannerInitialized = true;
+            
             html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
                 (decodedText, decodedResult) => {
-                    // Success
                     if(navigator.vibrate) navigator.vibrate(200);
                     let format = decodedResult.result.format?.formatName || 'CODE_128';
                     if(format.includes('QR')) format = 'QR_CODE';
-                    stopScanner();
-                    prepareEditor(decodedText, format);
+                    
+                    // Stop first, then UI change
+                    stopScanner().then(() => {
+                        prepareEditor(decodedText, format);
+                    });
                 },
-                (err) => {} // Ignore frame errors
-            );
+                (err) => {} // Frame errors are normal
+            ).catch(err => {
+                console.error("Scanner start error:", err);
+                isScannerInitialized = false;
+            });
         }
 
-        function stopScanner() {
-            if(html5QrcodeScanner) {
-                html5QrcodeScanner.stop().then(() => {
+        async function stopScanner() {
+            if (html5QrcodeScanner && isScannerInitialized) {
+                try {
+                    // Check internal state of library to avoid "Cannot stop" error
+                    if (html5QrcodeScanner.getState() === 2) { // 2 = SCANNING
+                        await html5QrcodeScanner.stop();
+                    }
+                    await html5QrcodeScanner.clear();
+                    isScannerInitialized = false;
                     document.getElementById('reader').innerHTML = "";
-                });
+                } catch (err) {
+                    console.warn("Scanner stop warning:", err);
+                }
             }
         }
 
@@ -663,20 +683,16 @@
             tempPass.data = data;
             tempPass.format = format;
             
-            // Reset fields
             document.getElementById('inp-title').value = '';
             document.getElementById('editor-data-display').innerText = data || "Waiting for input";
             
-            // Handle Manual Mode UI
             const manBlock = document.getElementById('manual-entry-block');
             if(isManual) {
                 manBlock.classList.remove('hidden');
                 document.getElementById('inp-manual-data').value = '';
-                // Default gradient
                 selectGradient(gradients[0]);
             } else {
                 manBlock.classList.add('hidden');
-                // Random default gradient for fun
                 const randGrad = gradients[Math.floor(Math.random() * gradients.length)];
                 selectGradient(randGrad);
             }
@@ -712,6 +728,7 @@
         function renderPassList(filter = 'all') {
             const grid = document.getElementById('pass-grid');
             const empty = document.getElementById('empty-state');
+            if(!grid) return;
             grid.innerHTML = '';
 
             const filtered = filter === 'all' ? passes : passes.filter(p => p.category === filter);
@@ -722,11 +739,9 @@
                 empty.style.display = 'none';
                 filtered.forEach(pass => {
                     const el = document.createElement('div');
-                    // List Item Design
                     el.className = 'glass-panel rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-white/5 transition-all group active:scale-95';
                     el.onclick = () => openPass(pass.id);
 
-                    // Mini preview of the art
                     el.innerHTML = `
                         <div class="w-16 h-16 rounded-xl shadow-lg relative overflow-hidden shrink-0 border border-white/10">
                             <div class="absolute inset-0" style="background: ${pass.bg}; background-size: cover; background-position: center;"></div>
@@ -768,20 +783,17 @@
             if(!pass) return;
             activePassId = id;
 
-            // Render UI
             document.getElementById('detail-title').innerText = pass.title;
             document.getElementById('detail-category').innerText = pass.category;
             document.getElementById('detail-icon').className = `ph ${pass.icon} text-2xl text-white`;
             document.getElementById('detail-date').innerText = "Added " + pass.date;
             document.getElementById('detail-code-text').innerText = pass.data;
 
-            // Render Art
             const artCard = document.getElementById('detail-card-art');
             artCard.style.background = pass.bg;
             artCard.style.backgroundSize = "cover";
             artCard.style.backgroundPosition = "center";
 
-            // Render Code
             const container = document.getElementById('detail-code-container');
             container.innerHTML = '';
 
