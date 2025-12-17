@@ -8,7 +8,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>PassPocket Ultra</title>
     
-    <!-- Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -17,112 +16,88 @@
 
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Plus Jakarta Sans', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'monospace'],
-                    },
-                    animation: {
-                        'float': 'float 6s ease-in-out infinite',
-                        'scan': 'scan 2s linear infinite',
-                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                    },
-                    keyframes: {
-                        float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-10px)' } },
-                        scan: { '0%': { top: '0%', opacity: '0' }, '10%': { opacity: '1' }, '90%': { opacity: '1' }, '100%': { top: '100%', opacity: '0' } }
-                    }
-                }
-            }
-        }
-    </script>
-
     <style>
         :root {
-            --glass-border: rgba(255, 255, 255, 0.12);
-            --glass-bg: rgba(15, 15, 20, 0.7);
-            --neon-accent: #6366f1;
+            --accent: #6366f1;
+            --radius: 1.5rem;
+            --glass-opacity: 0.1;
         }
 
         body {
-            background-color: #050507;
-            background-image: 
-                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.15), transparent 40%), 
-                radial-gradient(circle at 90% 80%, rgba(168, 85, 247, 0.1), transparent 40%);
+            background-color: #000000;
             color: #ffffff;
+            font-family: 'Plus Jakarta Sans', sans-serif;
             -webkit-tap-highlight-color: transparent;
-            overscroll-behavior-y: none;
             min-height: 100vh;
-        }
-
-        .glass-panel {
-            background: var(--glass-bg);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            border: 1px solid var(--glass-border);
-        }
-
-        .input-glass {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: white;
-            transition: all 0.2s ease;
-        }
-        .input-glass:focus {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: var(--neon-accent);
-            outline: none;
-        }
-
-        /* --- Unified Aesthetic Card --- */
-        .card-container { perspective: 1200px; }
-        
-        .premium-card {
-            transform-style: preserve-3d;
-            background-size: cover;
-            background-position: center;
-            position: relative;
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            transition: transform 0.1s ease-out;
-        }
-        
-        /* Inner gloss/depth */
-        .premium-card::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.2) 100%);
-            pointer-events: none;
-        }
-
-        .premium-card .card-content {
-            position: relative;
-            z-index: 10;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.4));
+            overflow-x: hidden;
         }
 
         .view-section {
             display: none;
             opacity: 0;
-            transform: translateY(10px);
-            transition: opacity 0.3s ease, transform 0.3s ease;
+            transition: opacity 0.3s ease;
             position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
+            inset: 0;
             overflow-y: auto;
             z-index: 10;
+            background: black;
         }
 
         .view-section.active {
             display: flex;
             opacity: 1;
-            transform: translateY(0);
+        }
+
+        .custom-card {
+            border-radius: var(--radius);
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-blur {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, var(--glass-opacity));
+        }
+
+        .noise-bg {
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3BaseFilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/feTurbulence%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.05;
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .input-field {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            padding: 1rem;
+            color: white;
+            width: 100%;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-field:focus {
+            border-color: var(--accent);
+        }
+
+        /* Nav tabs */
+        .nav-tab {
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #666;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .nav-tab.active {
+            color: white;
+            border-bottom: 2px solid var(--accent);
         }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -130,333 +105,330 @@
 </head>
 <body class="antialiased">
 
-    <!-- HOME -->
-    <div id="view-home" class="view-section active flex-col px-6 pt-8 pb-32">
-        <div class="flex justify-between items-center mb-8 sticky top-0 z-20 py-2 backdrop-blur-md -mx-6 px-6">
+    <!-- HOME VIEW -->
+    <div id="view-home" class="view-section active flex-col pb-32">
+        <header class="p-6 flex justify-between items-center sticky top-0 z-30 bg-black/80 backdrop-blur-lg">
             <div>
-                <h1 class="text-3xl font-extrabold tracking-tight bg-gradient-to-br from-white via-white to-indigo-300 bg-clip-text text-transparent">PassPocket</h1>
-                <p class="text-[10px] font-bold text-indigo-400 tracking-[0.2em] uppercase mt-1">Ultra Edition</p>
+                <h1 class="text-xl font-black tracking-tighter">POCKET<span class="text-indigo-500">ULTRA</span></h1>
+                <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Digital Vault v3.0</p>
             </div>
-            <button onclick="navigate('view-settings')" class="w-10 h-10 rounded-full glass-panel flex items-center justify-center text-slate-300 transition active:scale-90">
-                <i class="ph ph-sliders text-xl"></i>
+            <button onclick="navigate('view-settings')" class="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center">
+                <i class="ph ph-user-circle text-2xl"></i>
             </button>
-        </div>
+        </header>
 
-        <div id="pass-grid" class="grid grid-cols-1 gap-4 w-full max-w-lg mx-auto"></div>
-
-        <div id="empty-state" class="hidden flex-col items-center justify-center mt-32 opacity-40">
-            <div class="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 animate-float">
-                <i class="ph ph-wallet text-3xl"></i>
+        <main class="px-6 space-y-4">
+            <div id="pass-grid" class="space-y-3"></div>
+            <div id="empty-state" class="hidden py-20 flex flex-col items-center opacity-30">
+                <i class="ph ph-tray text-5xl mb-4"></i>
+                <p class="text-sm font-bold uppercase tracking-widest">Vault is Empty</p>
             </div>
-            <p class="text-slate-400 text-sm font-medium">Your wallet is empty</p>
-        </div>
+        </main>
 
-        <div class="fixed bottom-10 left-1/2 -translate-x-1/2 z-30 flex gap-4">
-            <button onclick="startScanner()" class="flex items-center gap-3 px-6 py-4 rounded-full bg-white text-black font-bold shadow-2xl shadow-indigo-500/20 active:scale-95 transition">
-                <i class="ph ph-scan text-xl"></i>
-                <span>Add Pass</span>
+        <div class="fixed bottom-8 left-0 right-0 flex justify-center z-40">
+            <button onclick="startScanner()" class="bg-white text-black px-8 py-4 rounded-full font-black text-xs uppercase tracking-widest shadow-2xl flex items-center gap-2 active:scale-95 transition">
+                <i class="ph-bold ph-plus"></i> Add New Pass
             </button>
         </div>
     </div>
 
-    <!-- SCANNER -->
-    <div id="view-scanner" class="view-section flex-col bg-black z-50">
-        <div class="absolute top-0 w-full p-6 flex justify-between items-center z-20">
-            <button onclick="navigate('view-home')" class="w-12 h-12 glass-panel rounded-full flex items-center justify-center text-white">
-                <i class="ph ph-x text-xl"></i>
-            </button>
-            <label class="px-5 py-2 glass-panel rounded-full text-xs font-bold cursor-pointer hover:bg-white/10 transition">
-                <input type="file" accept="image/*" class="hidden" onchange="scanFromFile(event)">
-                UPLOAD PIC
+    <!-- SCANNER VIEW -->
+    <div id="view-scanner" class="view-section flex-col z-50">
+        <div class="p-6 flex justify-between items-center bg-black">
+            <button onclick="navigate('view-home')" class="text-white text-sm font-bold">CANCEL</button>
+            <label class="text-xs font-bold border border-white/20 px-3 py-1 rounded-full cursor-pointer">
+                IMAGE SCAN <input type="file" accept="image/*" class="hidden" onchange="scanFromFile(event)">
             </label>
         </div>
-        <div id="reader" class="flex-1 bg-slate-900"></div>
-        <div class="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
-            <div class="w-64 h-64 border-2 border-indigo-500/50 rounded-3xl relative">
-                <div class="absolute inset-0 border-2 border-indigo-500 rounded-3xl animate-pulse"></div>
-                <div class="absolute top-0 left-0 w-full h-0.5 bg-indigo-400 shadow-[0_0_15px_#6366f1] animate-scan"></div>
-            </div>
-            <p class="mt-10 text-[10px] font-bold tracking-widest text-indigo-300 uppercase">Detecting Code...</p>
-        </div>
-        <div class="p-10 bg-black flex justify-center">
-            <button onclick="prepareEditor('', 'CODE_128', true)" class="text-slate-500 text-xs font-bold border-b border-slate-800 pb-1">ENTER MANUALLY</button>
+        <div id="reader" class="flex-1"></div>
+        <div class="p-10 flex flex-col items-center">
+            <button onclick="prepareEditor('', 'CODE_128', true)" class="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-1">Enter code manually</button>
         </div>
     </div>
 
-    <!-- EDITOR -->
-    <div id="view-editor" class="view-section flex-col bg-[#050507] z-40">
-        <div class="p-6 pb-32 max-w-lg mx-auto w-full">
-            <div class="flex items-center justify-between mb-8">
-                <button onclick="navigate('view-home')" class="w-10 h-10 glass-panel rounded-full flex items-center justify-center text-slate-300">
-                    <i class="ph ph-arrow-left"></i>
-                </button>
-                <span class="text-[10px] font-black tracking-widest text-slate-500 uppercase">Configuration</span>
-                <div class="w-10"></div>
-            </div>
+    <!-- EDITOR VIEW -->
+    <div id="view-editor" class="view-section flex-col">
+        <header class="p-6 border-b border-white/10 flex items-center gap-4">
+            <button onclick="navigate('view-home')"><i class="ph ph-arrow-left text-xl"></i></button>
+            <h2 class="text-sm font-black uppercase tracking-widest">Customize Pass</h2>
+        </header>
 
-            <!-- Unified Aesthetic Card Preview -->
-            <div class="card-container mb-10 w-full aspect-[1.58/1]">
-                <div id="editor-preview" class="premium-card w-full h-full rounded-[2.5rem] shadow-2xl">
-                    <div class="card-content p-8">
-                        <div class="flex justify-between items-start">
-                            <div class="flex-1 pr-4">
-                                <h3 id="prev-title" class="font-extrabold text-2xl text-white tracking-tight drop-shadow-md">Pass Title</h3>
-                                <div id="prev-category" class="inline-block mt-2 px-2.5 py-1 rounded-full text-[9px] font-black uppercase bg-white/10 backdrop-blur-md border border-white/10 tracking-wider">GENERAL</div>
-                            </div>
-                            <div id="prev-logo-container" class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-xl flex items-center justify-center border border-white/20 shadow-inner overflow-hidden">
-                                <i id="prev-icon" class="ph ph-ticket text-2xl text-white"></i>
-                            </div>
+        <div class="p-6 space-y-8">
+            <!-- Dynamic Preview -->
+            <div id="editor-card-preview" class="custom-card w-full aspect-[1.58/1] shadow-2xl">
+                <div class="noise-bg"></div>
+                <div class="relative z-10 p-6 h-full flex flex-col justify-between">
+                    <div class="flex justify-between items-start">
+                        <div class="space-y-1">
+                            <h3 id="prev-title" class="text-2xl font-black text-white leading-tight">Name</h3>
+                            <span id="prev-cat" class="px-2 py-0.5 rounded bg-black/20 text-[10px] font-black uppercase border border-white/10">General</span>
                         </div>
-                        <div class="flex justify-between items-end">
-                            <div class="bg-white/10 backdrop-blur-lg px-4 py-2 rounded-2xl border border-white/10">
-                                <p class="text-[8px] font-black text-white/40 uppercase mb-1 tracking-tighter">Verified Code</p>
-                                <p id="prev-code-text" class="text-white font-mono text-[10px] font-bold tracking-widest uppercase">.... .... ....</p>
-                            </div>
-                            <div class="text-white/20 text-3xl"><i class="ph ph-fingerprint"></i></div>
+                        <div id="prev-icon-container" class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center overflow-hidden border border-white/20">
+                            <i id="prev-icon" class="ph ph-ticket text-2xl"></i>
                         </div>
+                    </div>
+                    <div class="flex justify-between items-end">
+                        <div class="glass-blur rounded-lg p-2 border border-white/5">
+                            <p id="prev-code" class="font-mono text-[10px] opacity-70">AWAITING_INPUT</p>
+                        </div>
+                        <i class="ph ph-shield-check text-white/30 text-2xl"></i>
                     </div>
                 </div>
             </div>
 
-            <!-- Customization Controls -->
-            <div class="space-y-8">
+            <!-- Editor Form -->
+            <div class="space-y-6">
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Label & Context</label>
+                    <input type="text" id="inp-title" oninput="updatePreview()" class="input-field" placeholder="Membership Name">
+                    <div class="grid grid-cols-2 gap-2">
+                        <select id="inp-category" onchange="updatePreview()" class="input-field text-sm">
+                            <option>General</option><option>Travel</option><option>Sports</option><option>Finance</option>
+                        </select>
+                        <select id="inp-icon" onchange="updatePreview()" class="input-field text-sm">
+                            <option value="ph-ticket">Ticket</option><option value="ph-airplane">Flight</option><option value="ph-barbell">Gym</option><option value="ph-cardholder">Card</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="space-y-4">
-                    <input type="text" id="inp-title" oninput="updateEditorPreview()" placeholder="Pass Name (e.g., Apple ID, Gym)" class="w-full input-glass rounded-2xl p-5 text-sm font-bold">
+                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Card Aesthetic</label>
                     
+                    <div class="flex gap-2 pb-2 overflow-x-auto no-scrollbar" id="color-palette"></div>
+
                     <div class="grid grid-cols-2 gap-4">
-                        <select id="inp-category" onchange="updateEditorPreview()" class="w-full input-glass rounded-2xl p-5 text-sm font-bold appearance-none">
-                            <option value="General">General</option>
-                            <option value="Travel">Travel</option>
-                            <option value="Event">Event</option>
-                            <option value="ID">Identity</option>
-                        </select>
-                        <select id="inp-icon" onchange="updateEditorPreview()" class="w-full input-glass rounded-2xl p-5 text-sm font-bold appearance-none">
-                            <option value="ph-ticket">Ticket Icon</option>
-                            <option value="ph-airplane">Travel Icon</option>
-                            <option value="ph-user">User Icon</option>
-                            <option value="ph-coffee">Coffee Icon</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- NEW: Logo Upload -->
-                <div>
-                    <label class="text-[10px] font-black text-slate-500 uppercase mb-3 block tracking-widest">Logo / Art on Card</label>
-                    <div class="flex gap-4 items-center">
-                        <label class="flex-1 glass-panel rounded-2xl p-4 flex items-center justify-center gap-3 cursor-pointer hover:bg-white/5 transition border-dashed border-2">
-                            <i class="ph ph-upload-simple"></i>
-                            <span class="text-xs font-bold">Upload Logo</span>
-                            <input type="file" accept="image/*" class="hidden" onchange="handleLogoUpload(event)">
+                        <label class="flex flex-col gap-2">
+                            <span class="text-[9px] font-bold text-slate-600 uppercase">Background Image</span>
+                            <div class="relative h-12 rounded-xl border border-white/10 flex items-center justify-center text-xs overflow-hidden">
+                                <i class="ph ph-image-square mr-2"></i> Select
+                                <input type="file" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="handleBgUpload(event)">
+                            </div>
                         </label>
-                        <button onclick="resetLogo()" class="w-14 h-14 glass-panel rounded-2xl flex items-center justify-center text-red-400"><i class="ph ph-trash"></i></button>
+                        <label class="flex flex-col gap-2">
+                            <span class="text-[9px] font-bold text-slate-600 uppercase">Logo Overlay</span>
+                            <div class="relative h-12 rounded-xl border border-white/10 flex items-center justify-center text-xs overflow-hidden">
+                                <i class="ph ph-upload mr-2"></i> Logo
+                                <input type="file" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="handleLogoUpload(event)">
+                            </div>
+                        </label>
                     </div>
                 </div>
 
-                <!-- Background Selector -->
+                <div id="manual-block" class="hidden">
+                    <input type="text" id="inp-manual-data" oninput="updatePreview()" class="input-field font-mono text-xs" placeholder="ENTER CODE STRING">
+                </div>
+
+                <button onclick="savePass()" class="w-full bg-white text-black py-4 rounded-2xl font-black uppercase text-xs tracking-widest">Add To Pocket</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SETTINGS VIEW -->
+    <div id="view-settings" class="view-section flex-col">
+        <header class="p-6 border-b border-white/10 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <button onclick="navigate('view-home')"><i class="ph ph-arrow-left text-xl"></i></button>
+                <h2 class="text-sm font-black uppercase tracking-widest">Settings</h2>
+            </div>
+            <span class="text-[10px] font-bold bg-indigo-500/20 text-indigo-400 px-2 py-1 rounded">PRO</span>
+        </header>
+
+        <div class="p-6 space-y-8">
+            <!-- Profile Card -->
+            <div class="p-6 rounded-3xl border border-white/10 bg-white/5 flex items-center gap-4">
+                <div class="w-16 h-16 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-2xl font-black">U</div>
                 <div>
-                    <label class="text-[10px] font-black text-slate-500 uppercase mb-3 block tracking-widest">Card Backdrop</label>
-                    <div id="art-gradient-panel" class="grid grid-cols-5 gap-3 mb-4"></div>
-                    <label class="w-full glass-panel rounded-2xl p-4 flex items-center justify-center gap-3 cursor-pointer hover:bg-white/5 transition">
-                        <i class="ph ph-image"></i>
-                        <span class="text-xs font-bold">Custom Photo Background</span>
-                        <input type="file" accept="image/*" class="hidden" onchange="handleBgUpload(event)">
-                    </label>
+                    <h3 class="font-black">PassPocket User</h3>
+                    <p class="text-xs text-slate-500">Local Storage Mode</p>
                 </div>
+            </div>
 
-                <div id="manual-entry-block" class="hidden p-5 glass-panel rounded-2xl space-y-4">
-                    <input type="text" id="inp-manual-data" oninput="handleManualInput()" class="w-full input-glass rounded-xl p-4 text-xs font-mono" placeholder="DATA STRING">
+            <div class="space-y-4">
+                <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Global Personalization</h4>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5">
+                        <span class="text-sm font-bold">Corner Smoothness</span>
+                        <input type="range" id="setting-radius" min="0" max="40" value="24" onchange="applyGlobalStyles()" class="accent-indigo-500">
+                    </div>
+                    <div class="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5">
+                        <span class="text-sm font-bold">Glass Opacity</span>
+                        <input type="range" id="setting-glass" min="5" max="40" value="10" onchange="applyGlobalStyles()" class="accent-indigo-500">
+                    </div>
                 </div>
+            </div>
 
-                <button onclick="savePass()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm py-5 rounded-2xl shadow-xl shadow-indigo-600/20 active:scale-95 transition-all">
-                    SAVE TO POCKET
+            <div class="space-y-4">
+                <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Data Management</h4>
+                <button onclick="clearAllData()" class="w-full text-left p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-between">
+                    <span class="text-sm font-bold">Purge All Passes</span>
+                    <i class="ph ph-trash"></i>
                 </button>
+                <button onclick="exportData()" class="w-full text-left p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between">
+                    <span class="text-sm font-bold">Backup (JSON)</span>
+                    <i class="ph ph-export"></i>
+                </button>
+            </div>
+
+            <div class="pt-10 flex flex-col items-center opacity-20">
+                <p class="text-[10px] font-black tracking-widest mb-1 uppercase">Ultra Secure End-to-End</p>
+                <p class="text-[8px] font-bold">BUILD 3.0.4 - STABLE</p>
             </div>
         </div>
     </div>
 
     <!-- DETAIL VIEW -->
-    <div id="view-pass" class="view-section flex-col bg-[#050507] z-50">
-        <div class="p-6 flex justify-between items-center sticky top-0 bg-[#050507]/80 backdrop-blur-xl z-10">
-            <button onclick="navigate('view-home')" class="w-10 h-10 glass-panel rounded-full flex items-center justify-center text-white"><i class="ph ph-arrow-left"></i></button>
-            <button onclick="deletePass()" class="w-10 h-10 glass-panel rounded-full flex items-center justify-center text-red-400"><i class="ph ph-trash"></i></button>
-        </div>
+    <div id="view-pass" class="view-section flex-col">
+        <header class="p-6 flex justify-between items-center sticky top-0 bg-black/80 backdrop-blur-lg z-10">
+            <button onclick="navigate('view-home')"><i class="ph ph-arrow-left text-xl"></i></button>
+            <button onclick="deletePass()" class="text-red-500 font-bold text-xs uppercase tracking-widest">Remove</button>
+        </header>
 
-        <div class="flex-1 flex flex-col items-center px-6 pt-4 pb-20">
-            <div class="card-container w-full aspect-[1.58/1] mb-10 max-w-sm">
-                <div id="detail-card-art" class="premium-card w-full h-full rounded-[2.5rem] shadow-2xl">
-                    <div class="card-content p-8">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <h2 id="detail-title" class="font-extrabold text-2xl text-white tracking-tight"></h2>
-                                <div id="detail-category" class="inline-block mt-2 px-2.5 py-1 rounded-full text-[9px] font-black uppercase bg-white/10 border border-white/10"></div>
-                            </div>
-                            <div id="detail-logo-container" class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-xl flex items-center justify-center border border-white/20 shadow-inner overflow-hidden"></div>
+        <div class="px-6 flex flex-col items-center pt-4">
+            <div id="detail-card" class="custom-card w-full aspect-[1.58/1] mb-12 shadow-2xl">
+                <div class="noise-bg"></div>
+                <div class="relative z-10 p-8 h-full flex flex-col justify-between">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h2 id="detail-title" class="text-2xl font-black"></h2>
+                            <p id="detail-cat" class="text-[10px] font-black uppercase opacity-60"></p>
                         </div>
+                        <div id="detail-logo" class="w-14 h-14 rounded-2xl flex items-center justify-center overflow-hidden bg-white/10 border border-white/20"></div>
                     </div>
                 </div>
             </div>
 
-            <div class="w-full max-w-sm bg-white rounded-[2rem] p-8 flex flex-col items-center shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)]">
-                <div id="detail-code-container" class="w-full flex justify-center mb-6 mix-blend-multiply overflow-hidden"></div>
-                <p id="detail-code-text" class="font-mono text-sm font-black tracking-widest text-slate-800 break-all text-center"></p>
-                <div class="w-full h-px bg-slate-100 my-6"></div>
-                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Added <span id="detail-date"></span></p>
+            <div class="w-full bg-white rounded-[2.5rem] p-10 flex flex-col items-center shadow-inner">
+                <div id="detail-barcode" class="w-full flex justify-center mb-8 mix-blend-multiply overflow-hidden"></div>
+                <p id="detail-data" class="font-mono text-xs font-black tracking-widest text-slate-400 break-all text-center"></p>
             </div>
         </div>
     </div>
 
     <script>
-        let passes = JSON.parse(localStorage.getItem('passpocket_v2')) || [];
-        let tempPass = { data: null, format: 'CODE_128', bg: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', icon: 'ph-ticket', category: 'General', logo: null };
+        let passes = JSON.parse(localStorage.getItem('passpocket_ultra_v3')) || [];
+        let tempPass = { 
+            bg: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', 
+            logo: null, 
+            data: '', 
+            format: 'CODE_128' 
+        };
         let activePassId = null;
-        let scanner = null;
-        let isScannerOn = false;
+        let qrScanner = null;
 
-        const gradients = [
-            'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
-            'linear-gradient(135deg, #22c55e 0%, #10b981 100%)',
-            'linear-gradient(135deg, #ef4444 0%, #f97316 100%)',
-            'linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)',
-            'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)'
+        const colors = [
+            'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+            'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)',
+            '#1a1a1a', '#ffffff', '#22c55e', '#ef4444', '#3b82f6'
         ];
 
         document.addEventListener('DOMContentLoaded', () => {
             renderPassList();
-            generateGradientPicker();
-            init3DEffect();
+            renderColorPalette();
+            applyGlobalStyles();
         });
 
-        function navigate(viewId) {
-            if (isScannerOn) stopScanner();
-            document.querySelectorAll('.view-section').forEach(el => {
-                el.classList.remove('active');
-                setTimeout(() => { if(!el.classList.contains('active')) el.style.display = 'none'; }, 300);
-            });
-            const target = document.getElementById(viewId);
-            target.style.display = 'flex';
-            void target.offsetWidth;
+        function navigate(id) {
+            if (qrScanner) { qrScanner.stop(); qrScanner = null; }
+            document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+            const target = document.getElementById(id);
             target.classList.add('active');
         }
 
-        function init3DEffect() {
-            const handleMove = (e, card) => {
-                const rect = card.getBoundingClientRect();
-                const x = (e.clientX || e.touches?.[0].clientX) - rect.left;
-                const y = (e.clientY || e.touches?.[0].clientY) - rect.top;
-                const centerX = rect.width / 2;
-                const centerY = rect.height / 2;
-                card.style.transform = `perspective(1000px) rotateX(${(centerY - y) / 15}deg) rotateY(${(x - centerX) / 15}deg)`;
-            };
-            document.addEventListener('mousemove', e => {
-                document.querySelectorAll('.premium-card').forEach(c => handleMove(e, c));
-            });
+        function renderColorPalette() {
+            const p = document.getElementById('color-palette');
+            p.innerHTML = colors.map(c => `
+                <div onclick="setBg('${c}')" class="w-10 h-10 rounded-full shrink-0 border-2 border-transparent hover:border-white transition cursor-pointer" style="background:${c}"></div>
+            `).join('');
         }
 
-        function generateGradientPicker() {
-            const p = document.getElementById('art-gradient-panel');
-            p.innerHTML = gradients.map(g => `<div onclick="selectGradient('${g}')" class="aspect-square rounded-xl cursor-pointer hover:scale-105 transition border border-white/10" style="background:${g}"></div>`).join('');
-        }
-
-        function selectGradient(g) { tempPass.bg = g; updateEditorPreview(); }
-
-        function handleLogoUpload(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                const img = new Image();
-                img.src = ev.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = 200; canvas.height = 200;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, 200, 200);
-                    tempPass.logo = canvas.toDataURL('image/png');
-                    updateEditorPreview();
-                };
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function resetLogo() { tempPass.logo = null; updateEditorPreview(); }
+        function setBg(c) { tempPass.bg = c; updatePreview(); }
 
         function handleBgUpload(e) {
             const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = ev => {
-                tempPass.bg = `url(${ev.target.result})`;
-                updateEditorPreview();
-            };
-            reader.readAsDataURL(file);
+            if (file) {
+                const r = new FileReader();
+                r.onload = ev => { tempPass.bg = `url(${ev.target.result})`; updatePreview(); };
+                r.readAsDataURL(file);
+            }
         }
 
-        function updateEditorPreview() {
-            const title = document.getElementById('inp-title').value || "Pass Title";
+        function handleLogoUpload(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const r = new FileReader();
+                r.onload = ev => { tempPass.logo = ev.target.result; updatePreview(); };
+                r.readAsDataURL(file);
+            }
+        }
+
+        function updatePreview() {
+            const title = document.getElementById('inp-title').value || "Card Name";
             const cat = document.getElementById('inp-category').value;
             const icon = document.getElementById('inp-icon').value;
-            
-            const card = document.getElementById('editor-preview');
+            const data = document.getElementById('inp-manual-data').value || tempPass.data;
+
+            const card = document.getElementById('editor-card-preview');
             card.style.background = tempPass.bg;
             card.style.backgroundSize = 'cover';
             card.style.backgroundPosition = 'center';
 
             document.getElementById('prev-title').innerText = title;
-            document.getElementById('prev-category').innerText = cat;
-            
-            const logoContainer = document.getElementById('prev-logo-container');
+            document.getElementById('prev-cat').innerText = cat;
+            document.getElementById('prev-code').innerText = data || "AWAITING_DATA";
+
+            const logBox = document.getElementById('prev-icon-container');
             if (tempPass.logo) {
-                logoContainer.innerHTML = `<img src="${tempPass.logo}" class="w-full h-full object-cover">`;
+                logBox.innerHTML = `<img src="${tempPass.logo}" class="w-full h-full object-cover">`;
             } else {
-                logoContainer.innerHTML = `<i id="prev-icon" class="ph ${icon} text-2xl text-white"></i>`;
+                logBox.innerHTML = `<i id="prev-icon" class="ph ${icon} text-2xl"></i>`;
             }
-            document.getElementById('prev-code-text').innerText = tempPass.data || "NO DATA";
         }
 
         function startScanner() {
             navigate('view-scanner');
-            scanner = new Html5Qrcode("reader");
-            isScannerOn = true;
-            scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (txt, res) => {
-                let format = res.result.format?.formatName || 'CODE_128';
-                stopScanner().then(() => prepareEditor(txt, format));
-            }).catch(() => { isScannerOn = false; });
-        }
-
-        async function stopScanner() {
-            if (scanner && isScannerOn) {
-                await scanner.stop();
-                await scanner.clear();
-                isScannerOn = false;
-            }
+            qrScanner = new Html5Qrcode("reader");
+            qrScanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (txt, res) => {
+                const format = res.result.format?.formatName || 'CODE_128';
+                qrScanner.stop().then(() => prepareEditor(txt, format));
+            }).catch(() => {});
         }
 
         function scanFromFile(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const s = new Html5Qrcode("reader");
-            s.scanFile(file, true).then(txt => prepareEditor(txt, 'QR_CODE')).catch(() => alert("Could not find a code in that image."));
+            const f = e.target.files[0];
+            if (!f) return;
+            new Html5Qrcode("reader").scanFile(f, true)
+                .then(txt => prepareEditor(txt, 'QR_CODE'))
+                .catch(() => alert("No code detected."));
         }
 
         function prepareEditor(data, format, manual = false) {
             tempPass.data = data;
             tempPass.format = format;
-            document.getElementById('editor-data-display')?.innerText; 
-            if (manual) document.getElementById('manual-entry-block').classList.remove('hidden');
+            if (manual) document.getElementById('manual-block').classList.remove('hidden');
+            else document.getElementById('manual-block').classList.add('hidden');
             navigate('view-editor');
-            updateEditorPreview();
-        }
-
-        function handleManualInput() {
-            tempPass.data = document.getElementById('inp-manual-data').value;
-            updateEditorPreview();
+            updatePreview();
         }
 
         function savePass() {
-            const title = document.getElementById('inp-title').value.trim() || 'My Pass';
-            if (!tempPass.data) return alert("Missing data");
-            passes.unshift({ id: Date.now(), title, ...tempPass, date: new Date().toLocaleDateString() });
-            localStorage.setItem('passpocket_v2', JSON.stringify(passes));
+            const title = document.getElementById('inp-title').value || "Pass";
+            const data = document.getElementById('inp-manual-data').value || tempPass.data;
+            if (!data) return alert("No data detected");
+            
+            const newPass = {
+                id: Date.now(),
+                title,
+                category: document.getElementById('inp-category').value,
+                icon: document.getElementById('inp-icon').value,
+                data: data,
+                format: tempPass.format,
+                bg: tempPass.bg,
+                logo: tempPass.logo
+            };
+
+            passes.unshift(newPass);
+            localStorage.setItem('passpocket_ultra_v3', JSON.stringify(passes));
             renderPassList();
             navigate('view-home');
         }
@@ -466,59 +438,81 @@
             grid.innerHTML = '';
             document.getElementById('empty-state').style.display = passes.length ? 'none' : 'flex';
             passes.forEach(p => {
-                const el = document.createElement('div');
-                el.className = 'glass-panel rounded-3xl p-4 flex items-center gap-4 cursor-pointer active:scale-95 transition';
-                el.onclick = () => openPass(p.id);
-                el.innerHTML = `
-                    <div class="w-14 h-14 rounded-2xl overflow-hidden border border-white/10 shrink-0" style="background:${p.bg}; background-size:cover;">
+                const div = document.createElement('div');
+                div.className = "p-4 rounded-3xl bg-white/5 border border-white/10 flex items-center gap-4 active:scale-95 transition cursor-pointer";
+                div.onclick = () => openPass(p.id);
+                div.innerHTML = `
+                    <div class="w-12 h-12 rounded-2xl overflow-hidden shrink-0" style="background:${p.bg}; background-size:cover;">
                         <div class="w-full h-full bg-black/20 flex items-center justify-center">
-                            ${p.logo ? `<img src="${p.logo}" class="w-full h-full object-cover">` : `<i class="ph ${p.icon} text-white text-xl"></i>`}
+                            ${p.logo ? `<img src="${p.logo}" class="w-full h-full object-cover">` : `<i class="ph ${p.icon} text-lg"></i>`}
                         </div>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <h3 class="font-bold text-white truncate text-sm">${p.title}</h3>
-                        <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">${p.category}</p>
+                        <h4 class="font-black text-sm truncate">${p.title}</h4>
+                        <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">${p.category}</p>
                     </div>
-                    <i class="ph ph-caret-right text-slate-600 mr-2"></i>
+                    <i class="ph ph-caret-right text-slate-700"></i>
                 `;
-                grid.appendChild(el);
+                grid.appendChild(div);
             });
         }
 
         function openPass(id) {
-            const p = passes.find(x => x.id === id);
             activePassId = id;
+            const p = passes.find(x => x.id === id);
+            const card = document.getElementById('detail-card');
+            card.style.background = p.bg;
+            card.style.backgroundSize = 'cover';
             document.getElementById('detail-title').innerText = p.title;
-            document.getElementById('detail-category').innerText = p.category;
-            document.getElementById('detail-date').innerText = p.date;
-            document.getElementById('detail-code-text').innerText = p.data;
+            document.getElementById('detail-cat').innerText = p.category;
+            document.getElementById('detail-data').innerText = p.data;
             
-            const art = document.getElementById('detail-card-art');
-            art.style.background = p.bg;
-            art.style.backgroundSize = 'cover';
+            const logo = document.getElementById('detail-logo');
+            logo.innerHTML = p.logo ? `<img src="${p.logo}" class="w-full h-full object-cover">` : `<i class="ph ${p.icon} text-3xl"></i>`;
 
-            const logo = document.getElementById('detail-logo-container');
-            logo.innerHTML = p.logo ? `<img src="${p.logo}" class="w-full h-full object-cover">` : `<i class="ph ${p.icon} text-2xl text-white"></i>`;
-
-            const container = document.getElementById('detail-code-container');
-            container.innerHTML = '';
+            const bc = document.getElementById('detail-barcode');
+            bc.innerHTML = '';
             if (p.format.includes('QR')) {
-                new QRCode(container, { text: p.data, width: 180, height: 180 });
+                new QRCode(bc, { text: p.data, width: 200, height: 200 });
             } else {
-                const canv = document.createElement('canvas');
-                container.appendChild(canv);
-                JsBarcode(canv, p.data, { format: "CODE128", width: 2, height: 100, displayValue: false });
+                const c = document.createElement('canvas');
+                bc.appendChild(c);
+                JsBarcode(c, p.data, { format: "CODE128", width: 2.5, height: 80, displayValue: false });
             }
             navigate('view-pass');
         }
 
         function deletePass() {
-            if (confirm("Remove pass?")) {
+            if (confirm("Remove this pass forever?")) {
                 passes = passes.filter(x => x.id !== activePassId);
-                localStorage.setItem('passpocket_v2', JSON.stringify(passes));
+                localStorage.setItem('passpocket_ultra_v3', JSON.stringify(passes));
                 renderPassList();
                 navigate('view-home');
             }
+        }
+
+        function applyGlobalStyles() {
+            const r = document.getElementById('setting-radius').value;
+            const g = document.getElementById('setting-glass').value;
+            document.documentElement.style.setProperty('--radius', r + 'px');
+            document.documentElement.style.setProperty('--glass-opacity', g / 100);
+        }
+
+        function clearAllData() {
+            if (confirm("This will erase ALL passes. Continue?")) {
+                passes = [];
+                localStorage.removeItem('passpocket_ultra_v3');
+                renderPassList();
+                navigate('view-home');
+            }
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(passes));
+            const dl = document.createElement('a');
+            dl.setAttribute("href", dataStr);
+            dl.setAttribute("download", "passpocket_backup.json");
+            dl.click();
         }
     </script>
 </body>
