@@ -48,17 +48,46 @@
             opacity: 1;
         }
 
-        .custom-card {
-            border-radius: var(--radius);
-            position: relative;
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        /* --- Flipping Card Logic --- */
+        .flip-container {
+            perspective: 1200px;
+            width: 100%;
+            aspect-ratio: 1.58/1;
+            cursor: pointer;
         }
 
-        .glass-blur {
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            background: rgba(255, 255, 255, var(--glass-opacity));
+        .flipper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+
+        .flip-container.flipped .flipper {
+            transform: rotateY(180deg);
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            border-radius: var(--radius);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+
+        .card-back {
+            transform: rotateY(180deg);
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
         }
 
         .noise-bg {
@@ -69,6 +98,12 @@
             pointer-events: none;
         }
 
+        .glass-blur {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, var(--glass-opacity));
+        }
+
         .input-field {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -77,30 +112,15 @@
             color: white;
             width: 100%;
             outline: none;
-            transition: border-color 0.2s;
-        }
-
-        .input-field:focus {
-            border-color: var(--accent);
-        }
-
-        /* Nav tabs */
-        .nav-tab {
-            padding: 0.5rem 1rem;
-            font-size: 0.75rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: #666;
-            cursor: pointer;
-            transition: color 0.2s;
-        }
-        .nav-tab.active {
-            color: white;
-            border-bottom: 2px solid var(--accent);
         }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        @keyframes bounce-subtle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        .animate-bounce-subtle { animation: bounce-subtle 2s infinite; }
     </style>
 </head>
 <body class="antialiased">
@@ -110,10 +130,10 @@
         <header class="p-6 flex justify-between items-center sticky top-0 z-30 bg-black/80 backdrop-blur-lg">
             <div>
                 <h1 class="text-xl font-black tracking-tighter">POCKET<span class="text-indigo-500">ULTRA</span></h1>
-                <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Digital Vault v3.0</p>
+                <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Digital Vault v3.1</p>
             </div>
             <button onclick="navigate('view-settings')" class="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center">
-                <i class="ph ph-user-circle text-2xl"></i>
+                <i class="ph ph-gear-six text-xl"></i>
             </button>
         </header>
 
@@ -136,13 +156,13 @@
     <div id="view-scanner" class="view-section flex-col z-50">
         <div class="p-6 flex justify-between items-center bg-black">
             <button onclick="navigate('view-home')" class="text-white text-sm font-bold">CANCEL</button>
-            <label class="text-xs font-bold border border-white/20 px-3 py-1 rounded-full cursor-pointer">
-                IMAGE SCAN <input type="file" accept="image/*" class="hidden" onchange="scanFromFile(event)">
+            <label class="text-xs font-bold border border-white/20 px-4 py-2 rounded-full cursor-pointer">
+                UPLOAD <input type="file" accept="image/*" class="hidden" onchange="scanFromFile(event)">
             </label>
         </div>
         <div id="reader" class="flex-1"></div>
         <div class="p-10 flex flex-col items-center">
-            <button onclick="prepareEditor('', 'CODE_128', true)" class="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-1">Enter code manually</button>
+            <button onclick="prepareEditor('', 'CODE_128', true)" class="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-1">Enter manually</button>
         </div>
     </div>
 
@@ -150,162 +170,145 @@
     <div id="view-editor" class="view-section flex-col">
         <header class="p-6 border-b border-white/10 flex items-center gap-4">
             <button onclick="navigate('view-home')"><i class="ph ph-arrow-left text-xl"></i></button>
-            <h2 class="text-sm font-black uppercase tracking-widest">Customize Pass</h2>
+            <h2 class="text-sm font-black uppercase tracking-widest">Editor</h2>
         </header>
 
         <div class="p-6 space-y-8">
-            <!-- Dynamic Preview -->
-            <div id="editor-card-preview" class="custom-card w-full aspect-[1.58/1] shadow-2xl">
-                <div class="noise-bg"></div>
-                <div class="relative z-10 p-6 h-full flex flex-col justify-between">
-                    <div class="flex justify-between items-start">
-                        <div class="space-y-1">
-                            <h3 id="prev-title" class="text-2xl font-black text-white leading-tight">Name</h3>
-                            <span id="prev-cat" class="px-2 py-0.5 rounded bg-black/20 text-[10px] font-black uppercase border border-white/10">General</span>
-                        </div>
-                        <div id="prev-icon-container" class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center overflow-hidden border border-white/20">
-                            <i id="prev-icon" class="ph ph-ticket text-2xl"></i>
+            <!-- Preview with Flip -->
+            <div class="flip-container" id="editor-flip-box" onclick="this.classList.toggle('flipped')">
+                <div class="flipper">
+                    <div id="editor-card-front" class="card-front">
+                        <div class="noise-bg"></div>
+                        <div class="relative z-10 p-6 h-full flex flex-col justify-between">
+                            <div class="flex justify-between items-start">
+                                <div class="space-y-1">
+                                    <h3 id="prev-title" class="text-2xl font-black text-white leading-tight">Name</h3>
+                                    <span id="prev-cat" class="px-2 py-0.5 rounded bg-black/20 text-[10px] font-black uppercase border border-white/10">General</span>
+                                </div>
+                                <div id="prev-icon-container" class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center overflow-hidden border border-white/20 shadow-lg">
+                                    <i id="prev-icon" class="ph ph-ticket text-2xl"></i>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-end">
+                                <div class="glass-blur rounded-lg px-2 py-1 border border-white/5">
+                                    <p id="prev-code" class="font-mono text-[9px] opacity-70">DATA_READY</p>
+                                </div>
+                                <i class="ph ph-fingerprint text-white/30 text-2xl"></i>
+                            </div>
                         </div>
                     </div>
-                    <div class="flex justify-between items-end">
-                        <div class="glass-blur rounded-lg p-2 border border-white/5">
-                            <p id="prev-code" class="font-mono text-[10px] opacity-70">AWAITING_INPUT</p>
+                    <div class="card-back">
+                        <p class="text-[10px] text-slate-400 font-black mb-4 uppercase">Code Preview</p>
+                        <div id="editor-barcode-preview" class="w-full h-full flex items-center justify-center text-slate-200 text-xs text-center border-2 border-dashed border-slate-100 rounded-xl">
+                            Code will appear here
                         </div>
-                        <i class="ph ph-shield-check text-white/30 text-2xl"></i>
                     </div>
                 </div>
             </div>
 
-            <!-- Editor Form -->
             <div class="space-y-6">
-                <div class="space-y-2">
-                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Label & Context</label>
+                <div class="space-y-3">
+                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Identity</label>
                     <input type="text" id="inp-title" oninput="updatePreview()" class="input-field" placeholder="Membership Name">
                     <div class="grid grid-cols-2 gap-2">
                         <select id="inp-category" onchange="updatePreview()" class="input-field text-sm">
-                            <option>General</option><option>Travel</option><option>Sports</option><option>Finance</option>
+                            <option>General</option><option>Travel</option><option>Fitness</option><option>Shopping</option>
                         </select>
                         <select id="inp-icon" onchange="updatePreview()" class="input-field text-sm">
-                            <option value="ph-ticket">Ticket</option><option value="ph-airplane">Flight</option><option value="ph-barbell">Gym</option><option value="ph-cardholder">Card</option>
+                            <option value="ph-ticket">Ticket</option><option value="ph-airplane">Flight</option><option value="ph-barbell">Gym</option><option value="ph-shopping-cart">Store</option>
                         </select>
                     </div>
                 </div>
 
                 <div class="space-y-4">
-                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Card Aesthetic</label>
-                    
-                    <div class="flex gap-2 pb-2 overflow-x-auto no-scrollbar" id="color-palette"></div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <label class="flex flex-col gap-2">
-                            <span class="text-[9px] font-bold text-slate-600 uppercase">Background Image</span>
-                            <div class="relative h-12 rounded-xl border border-white/10 flex items-center justify-center text-xs overflow-hidden">
-                                <i class="ph ph-image-square mr-2"></i> Select
-                                <input type="file" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="handleBgUpload(event)">
-                            </div>
+                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Aesthetics</label>
+                    <div class="flex gap-2 overflow-x-auto no-scrollbar" id="color-palette"></div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="h-12 rounded-xl border border-white/10 flex items-center justify-center text-[10px] font-black uppercase cursor-pointer hover:bg-white/5 transition">
+                            <i class="ph ph-image mr-2"></i> BG Photo
+                            <input type="file" accept="image/*" class="hidden" onchange="handleBgUpload(event)">
                         </label>
-                        <label class="flex flex-col gap-2">
-                            <span class="text-[9px] font-bold text-slate-600 uppercase">Logo Overlay</span>
-                            <div class="relative h-12 rounded-xl border border-white/10 flex items-center justify-center text-xs overflow-hidden">
-                                <i class="ph ph-upload mr-2"></i> Logo
-                                <input type="file" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="handleLogoUpload(event)">
-                            </div>
+                        <label class="h-12 rounded-xl border border-white/10 flex items-center justify-center text-[10px] font-black uppercase cursor-pointer hover:bg-white/5 transition">
+                            <i class="ph ph-upload mr-2"></i> Logo
+                            <input type="file" accept="image/*" class="hidden" onchange="handleLogoUpload(event)">
                         </label>
                     </div>
                 </div>
 
                 <div id="manual-block" class="hidden">
-                    <input type="text" id="inp-manual-data" oninput="updatePreview()" class="input-field font-mono text-xs" placeholder="ENTER CODE STRING">
+                    <input type="text" id="inp-manual-data" oninput="updatePreview()" class="input-field font-mono text-xs" placeholder="ENTER CODE MANUALLY">
                 </div>
 
-                <button onclick="savePass()" class="w-full bg-white text-black py-4 rounded-2xl font-black uppercase text-xs tracking-widest">Add To Pocket</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- SETTINGS VIEW -->
-    <div id="view-settings" class="view-section flex-col">
-        <header class="p-6 border-b border-white/10 flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <button onclick="navigate('view-home')"><i class="ph ph-arrow-left text-xl"></i></button>
-                <h2 class="text-sm font-black uppercase tracking-widest">Settings</h2>
-            </div>
-            <span class="text-[10px] font-bold bg-indigo-500/20 text-indigo-400 px-2 py-1 rounded">PRO</span>
-        </header>
-
-        <div class="p-6 space-y-8">
-            <!-- Profile Card -->
-            <div class="p-6 rounded-3xl border border-white/10 bg-white/5 flex items-center gap-4">
-                <div class="w-16 h-16 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-2xl font-black">U</div>
-                <div>
-                    <h3 class="font-black">PassPocket User</h3>
-                    <p class="text-xs text-slate-500">Local Storage Mode</p>
-                </div>
-            </div>
-
-            <div class="space-y-4">
-                <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Global Personalization</h4>
-                <div class="space-y-3">
-                    <div class="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5">
-                        <span class="text-sm font-bold">Corner Smoothness</span>
-                        <input type="range" id="setting-radius" min="0" max="40" value="24" onchange="applyGlobalStyles()" class="accent-indigo-500">
-                    </div>
-                    <div class="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5">
-                        <span class="text-sm font-bold">Glass Opacity</span>
-                        <input type="range" id="setting-glass" min="5" max="40" value="10" onchange="applyGlobalStyles()" class="accent-indigo-500">
-                    </div>
-                </div>
-            </div>
-
-            <div class="space-y-4">
-                <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Data Management</h4>
-                <button onclick="clearAllData()" class="w-full text-left p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-between">
-                    <span class="text-sm font-bold">Purge All Passes</span>
-                    <i class="ph ph-trash"></i>
-                </button>
-                <button onclick="exportData()" class="w-full text-left p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between">
-                    <span class="text-sm font-bold">Backup (JSON)</span>
-                    <i class="ph ph-export"></i>
-                </button>
-            </div>
-
-            <div class="pt-10 flex flex-col items-center opacity-20">
-                <p class="text-[10px] font-black tracking-widest mb-1 uppercase">Ultra Secure End-to-End</p>
-                <p class="text-[8px] font-bold">BUILD 3.0.4 - STABLE</p>
+                <button onclick="savePass()" class="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl shadow-indigo-600/20 active:scale-95 transition">Add to Pocket</button>
             </div>
         </div>
     </div>
 
     <!-- DETAIL VIEW -->
     <div id="view-pass" class="view-section flex-col">
-        <header class="p-6 flex justify-between items-center sticky top-0 bg-black/80 backdrop-blur-lg z-10">
+        <header class="p-6 flex justify-between items-center sticky top-0 bg-black/80 backdrop-blur-lg z-30">
             <button onclick="navigate('view-home')"><i class="ph ph-arrow-left text-xl"></i></button>
-            <button onclick="deletePass()" class="text-red-500 font-bold text-xs uppercase tracking-widest">Remove</button>
+            <button onclick="deletePass()" class="text-red-500 font-bold text-xs uppercase tracking-widest">Delete</button>
         </header>
 
-        <div class="px-6 flex flex-col items-center pt-4">
-            <div id="detail-card" class="custom-card w-full aspect-[1.58/1] mb-12 shadow-2xl">
-                <div class="noise-bg"></div>
-                <div class="relative z-10 p-8 h-full flex flex-col justify-between">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h2 id="detail-title" class="text-2xl font-black"></h2>
-                            <p id="detail-cat" class="text-[10px] font-black uppercase opacity-60"></p>
+        <div class="px-6 flex flex-col items-center pt-10">
+            <!-- Flippable Card in Detail View -->
+            <div class="flip-container mb-12" id="detail-flip-box" onclick="this.classList.toggle('flipped')">
+                <div class="flipper">
+                    <div id="detail-card-front" class="card-front">
+                        <div class="noise-bg"></div>
+                        <div class="relative z-10 p-8 h-full flex flex-col justify-between">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h2 id="detail-title" class="text-2xl font-black text-white"></h2>
+                                    <p id="detail-cat" class="text-[10px] font-black uppercase opacity-60 mt-1"></p>
+                                </div>
+                                <div id="detail-logo" class="w-14 h-14 rounded-2xl flex items-center justify-center overflow-hidden bg-white/10 border border-white/20"></div>
+                            </div>
+                            <div class="flex justify-between items-center text-white/20">
+                                <span class="text-[9px] font-bold tracking-[0.3em]">SECURE PASS</span>
+                                <i class="ph-bold ph-arrows-left-right text-xl"></i>
+                            </div>
                         </div>
-                        <div id="detail-logo" class="w-14 h-14 rounded-2xl flex items-center justify-center overflow-hidden bg-white/10 border border-white/20"></div>
+                    </div>
+                    <div class="card-back">
+                        <div id="detail-barcode" class="w-full flex justify-center mb-6 mix-blend-multiply overflow-hidden"></div>
+                        <p id="detail-data" class="font-mono text-[9px] font-black tracking-widest text-slate-400 break-all text-center"></p>
                     </div>
                 </div>
             </div>
 
-            <div class="w-full bg-white rounded-[2.5rem] p-10 flex flex-col items-center shadow-inner">
-                <div id="detail-barcode" class="w-full flex justify-center mb-8 mix-blend-multiply overflow-hidden"></div>
-                <p id="detail-data" class="font-mono text-xs font-black tracking-widest text-slate-400 break-all text-center"></p>
+            <div class="flex flex-col items-center gap-3 opacity-40 animate-bounce-subtle">
+                <i class="ph-bold ph-arrows-clockwise text-xl"></i>
+                <p class="text-[10px] font-black uppercase tracking-widest">Tap card to show code</p>
             </div>
         </div>
     </div>
 
+    <!-- SETTINGS VIEW -->
+    <div id="view-settings" class="view-section flex-col">
+        <header class="p-6 border-b border-white/10 flex items-center gap-4">
+            <button onclick="navigate('view-home')"><i class="ph ph-arrow-left text-xl"></i></button>
+            <h2 class="text-sm font-black uppercase tracking-widest">Settings</h2>
+        </header>
+        <div class="p-6 space-y-6">
+            <div class="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-4">
+                <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-widest">UI Customization</h3>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-bold">Corner Radius</span>
+                    <input type="range" id="setting-radius" min="0" max="40" value="24" onchange="applyGlobalStyles()" class="accent-indigo-500">
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-bold">Glass Strength</span>
+                    <input type="range" id="setting-glass" min="5" max="30" value="10" onchange="applyGlobalStyles()" class="accent-indigo-500">
+                </div>
+            </div>
+            <button onclick="clearAllData()" class="w-full p-4 rounded-xl bg-red-500/10 text-red-500 font-bold text-sm">Purge Wallet Data</button>
+        </div>
+    </div>
+
     <script>
-        let passes = JSON.parse(localStorage.getItem('passpocket_ultra_v3')) || [];
+        let passes = JSON.parse(localStorage.getItem('passpocket_ultra_v3.1')) || [];
         let tempPass = { 
             bg: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', 
             logo: null, 
@@ -319,7 +322,8 @@
             'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
             'linear-gradient(135deg, #10b981 0%, #059669 100%)',
             'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)',
-            '#1a1a1a', '#ffffff', '#22c55e', '#ef4444', '#3b82f6'
+            'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+            '#1a1a1a', '#ffffff', '#22c55e', '#3b82f6'
         ];
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -333,6 +337,9 @@
             document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
             const target = document.getElementById(id);
             target.classList.add('active');
+            
+            // Reset flips
+            document.querySelectorAll('.flip-container').forEach(c => c.classList.remove('flipped'));
         }
 
         function renderColorPalette() {
@@ -363,19 +370,19 @@
         }
 
         function updatePreview() {
-            const title = document.getElementById('inp-title').value || "Card Name";
+            const title = document.getElementById('inp-title').value || "Card Label";
             const cat = document.getElementById('inp-category').value;
             const icon = document.getElementById('inp-icon').value;
             const data = document.getElementById('inp-manual-data').value || tempPass.data;
 
-            const card = document.getElementById('editor-card-preview');
+            const card = document.getElementById('editor-card-front');
             card.style.background = tempPass.bg;
             card.style.backgroundSize = 'cover';
             card.style.backgroundPosition = 'center';
 
             document.getElementById('prev-title').innerText = title;
             document.getElementById('prev-cat').innerText = cat;
-            document.getElementById('prev-code').innerText = data || "AWAITING_DATA";
+            document.getElementById('prev-code').innerText = data ? "DATA_READY" : "AWAITING_INPUT";
 
             const logBox = document.getElementById('prev-icon-container');
             if (tempPass.logo) {
@@ -399,7 +406,7 @@
             if (!f) return;
             new Html5Qrcode("reader").scanFile(f, true)
                 .then(txt => prepareEditor(txt, 'QR_CODE'))
-                .catch(() => alert("No code detected."));
+                .catch(() => alert("Could not detect a code. Try a clearer image."));
         }
 
         function prepareEditor(data, format, manual = false) {
@@ -414,7 +421,7 @@
         function savePass() {
             const title = document.getElementById('inp-title').value || "Pass";
             const data = document.getElementById('inp-manual-data').value || tempPass.data;
-            if (!data) return alert("No data detected");
+            if (!data) return alert("Missing data");
             
             const newPass = {
                 id: Date.now(),
@@ -428,7 +435,7 @@
             };
 
             passes.unshift(newPass);
-            localStorage.setItem('passpocket_ultra_v3', JSON.stringify(passes));
+            localStorage.setItem('passpocket_ultra_v3.1', JSON.stringify(passes));
             renderPassList();
             navigate('view-home');
         }
@@ -448,7 +455,7 @@
                         </div>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <h4 class="font-black text-sm truncate">${p.title}</h4>
+                        <h4 class="font-black text-sm truncate tracking-tight text-white">${p.title}</h4>
                         <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">${p.category}</p>
                     </div>
                     <i class="ph ph-caret-right text-slate-700"></i>
@@ -460,32 +467,35 @@
         function openPass(id) {
             activePassId = id;
             const p = passes.find(x => x.id === id);
-            const card = document.getElementById('detail-card');
-            card.style.background = p.bg;
-            card.style.backgroundSize = 'cover';
+            
+            const front = document.getElementById('detail-card-front');
+            front.style.background = p.bg;
+            front.style.backgroundSize = 'cover';
+            front.style.backgroundPosition = 'center';
+
             document.getElementById('detail-title').innerText = p.title;
             document.getElementById('detail-cat').innerText = p.category;
             document.getElementById('detail-data').innerText = p.data;
             
             const logo = document.getElementById('detail-logo');
-            logo.innerHTML = p.logo ? `<img src="${p.logo}" class="w-full h-full object-cover">` : `<i class="ph ${p.icon} text-3xl"></i>`;
+            logo.innerHTML = p.logo ? `<img src="${p.logo}" class="w-full h-full object-cover">` : `<i class="ph ${p.icon} text-3xl text-white"></i>`;
 
             const bc = document.getElementById('detail-barcode');
             bc.innerHTML = '';
             if (p.format.includes('QR')) {
-                new QRCode(bc, { text: p.data, width: 200, height: 200 });
+                new QRCode(bc, { text: p.data, width: 220, height: 220 });
             } else {
                 const c = document.createElement('canvas');
                 bc.appendChild(c);
-                JsBarcode(c, p.data, { format: "CODE128", width: 2.5, height: 80, displayValue: false });
+                JsBarcode(c, p.data, { format: "CODE128", width: 2.2, height: 100, displayValue: false });
             }
             navigate('view-pass');
         }
 
         function deletePass() {
-            if (confirm("Remove this pass forever?")) {
+            if (confirm("Delete this pass?")) {
                 passes = passes.filter(x => x.id !== activePassId);
-                localStorage.setItem('passpocket_ultra_v3', JSON.stringify(passes));
+                localStorage.setItem('passpocket_ultra_v3.1', JSON.stringify(passes));
                 renderPassList();
                 navigate('view-home');
             }
@@ -499,20 +509,12 @@
         }
 
         function clearAllData() {
-            if (confirm("This will erase ALL passes. Continue?")) {
+            if (confirm("Erase all data?")) {
                 passes = [];
-                localStorage.removeItem('passpocket_ultra_v3');
+                localStorage.removeItem('passpocket_ultra_v3.1');
                 renderPassList();
                 navigate('view-home');
             }
-        }
-
-        function exportData() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(passes));
-            const dl = document.createElement('a');
-            dl.setAttribute("href", dataStr);
-            dl.setAttribute("download", "passpocket_backup.json");
-            dl.click();
         }
     </script>
 </body>
