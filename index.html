@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>PassPocket</title>
     
     <!-- Tailwind CSS -->
@@ -11,8 +14,13 @@
     <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
+    <!-- Scanning & Generation Libraries -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
     <style>
         /* Custom Styles & Animations */
@@ -21,9 +29,10 @@
             background-color: #0f172a;
             color: #ffffff;
             -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none; /* Prevent pull-to-refresh */
         }
 
-        /* Hide scrollbar for clean UI */
+        /* Hide scrollbar */
         ::-webkit-scrollbar {
             width: 0px;
             background: transparent;
@@ -37,12 +46,12 @@
         }
 
         .pass-card {
-            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
             transform-style: preserve-3d;
         }
 
         .pass-card:active {
-            transform: scale(0.96);
+            transform: scale(0.97);
         }
 
         .scan-line {
@@ -50,11 +59,15 @@
             top: 0;
             left: 0;
             width: 100%;
-            height: 4px;
-            background: #38bdf8;
-            box-shadow: 0 0 15px #38bdf8;
+            height: 2px;
+            background: #ef4444;
+            box-shadow: 0 0 4px #ef4444;
             animation: scan 2s infinite linear;
             display: none;
+        }
+
+        .scanning .scan-line {
+            display: block;
         }
 
         @keyframes scan {
@@ -64,243 +77,314 @@
             100% { top: 100%; opacity: 0; }
         }
 
-        .scanning .scan-line {
-            display: block;
-        }
-
         /* View Transitions */
         .view-section {
             display: none;
             opacity: 0;
             transition: opacity 0.3s ease;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
         }
 
         .view-section.active {
             display: flex;
             opacity: 1;
+            z-index: 10;
         }
 
-        /* Gradient Text */
         .text-gradient {
             background: linear-gradient(to right, #38bdf8, #818cf8);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        /* Color Pickers */
-        .color-dot {
-            transition: transform 0.2s;
+        /* Custom Inputs */
+        .input-glass {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
         }
-        .color-dot.selected {
-            transform: scale(1.2);
-            border: 2px solid white;
-            box-shadow: 0 0 10px rgba(255,255,255,0.5);
+        .input-glass:focus {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #38bdf8;
+            outline: none;
+        }
+
+        /* Brightness simulation for barcode view */
+        .max-brightness {
+            filter: brightness(1.2) contrast(1.1);
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        /* Scanner overlay cleanup */
+        #reader__scan_region {
+            background: transparent !important;
+        }
+        #reader video {
+            object-fit: cover;
+            border-radius: 12px;
         }
     </style>
 </head>
-<body class="h-screen w-screen overflow-hidden relative">
+<body class="h-full w-full bg-slate-900 text-white">
 
     <!-- ==================== HOME VIEW ==================== -->
-    <div id="view-home" class="view-section active flex-col h-full w-full p-6">
+    <div id="view-home" class="view-section active flex-col p-6 overflow-y-auto">
         <!-- Header -->
-        <div class="flex justify-between items-center mb-8">
+        <div class="flex justify-between items-center mb-8 mt-2">
             <div>
                 <h1 class="text-3xl font-bold tracking-tight text-gradient">PassPocket</h1>
-                <p class="text-slate-400 text-sm mt-1">Your digital wallet</p>
+                <p class="text-slate-400 text-sm mt-1">Digital Wallet</p>
             </div>
-            <button onclick="openSettings()" class="p-2 rounded-full hover:bg-white/10 transition">
-                <i class="ph ph-gear text-xl"></i>
+            <button onclick="clearData()" class="p-2 rounded-full hover:bg-white/10 transition text-slate-400">
+                <i class="ph ph-trash text-xl"></i>
             </button>
         </div>
 
         <!-- Grid of Passes -->
-        <div id="pass-grid" class="flex-1 overflow-y-auto pb-24 grid grid-cols-1 gap-4">
+        <div id="pass-grid" class="flex-1 grid grid-cols-1 gap-4 pb-24 content-start">
             <!-- Empty State (Populated by JS) -->
-            <div id="empty-state" class="hidden flex flex-col items-center justify-center h-64 text-center">
-                <div class="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
-                    <i class="ph ph-cards text-3xl text-slate-500"></i>
+            <div id="empty-state" class="hidden flex flex-col items-center justify-center h-64 text-center mt-12">
+                <div class="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6 ring-1 ring-white/10">
+                    <i class="ph ph-qr-code text-4xl text-slate-500"></i>
                 </div>
-                <h3 class="text-lg font-medium text-slate-300">No passes yet</h3>
-                <p class="text-slate-500 text-sm max-w-xs mt-2">Tap the + button to scan and save your first pass.</p>
+                <h3 class="text-xl font-medium text-white">No passes yet</h3>
+                <p class="text-slate-400 text-sm max-w-xs mt-2 leading-relaxed">Scan your physical cards to declutter your wallet.</p>
+                <button onclick="startScanner()" class="mt-8 text-blue-400 font-medium text-sm hover:text-blue-300">
+                    Scan a card now &rarr;
+                </button>
             </div>
         </div>
 
         <!-- Floating Action Button -->
-        <div class="absolute bottom-6 left-0 w-full flex justify-center z-10">
-            <button onclick="startCamera()" class="group flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-4 rounded-full shadow-lg shadow-blue-500/30 transition-all transform hover:scale-105 active:scale-95">
-                <i class="ph ph-plus text-xl font-bold"></i>
-                <span class="font-semibold">Add Pass</span>
+        <div class="fixed bottom-8 left-0 w-full flex justify-center z-20 pointer-events-none">
+            <button onclick="startScanner()" class="pointer-events-auto group flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-4 rounded-full shadow-lg shadow-blue-500/30 transition-all transform hover:scale-105 active:scale-95">
+                <i class="ph ph-scan text-xl font-bold"></i>
+                <span class="font-semibold">Scan New</span>
             </button>
         </div>
     </div>
 
-    <!-- ==================== CAMERA VIEW ==================== -->
-    <div id="view-camera" class="view-section flex-col h-full w-full bg-black z-50">
-        <!-- Top Bar -->
-        <div class="absolute top-0 w-full p-6 flex justify-between items-center z-20">
-            <button onclick="closeCamera()" class="p-3 bg-black/40 backdrop-blur rounded-full text-white">
+    <!-- ==================== SCANNER VIEW ==================== -->
+    <div id="view-scanner" class="view-section flex-col bg-black z-50">
+        <!-- Controls -->
+        <div class="absolute top-0 w-full p-6 flex justify-between items-center z-20 bg-gradient-to-b from-black/80 to-transparent">
+            <button onclick="stopScanner()" class="p-3 bg-white/10 backdrop-blur rounded-full text-white hover:bg-white/20 transition">
                 <i class="ph ph-x text-xl"></i>
             </button>
-            <span class="text-sm font-medium bg-black/40 px-3 py-1 rounded-full backdrop-blur">Align Code</span>
+            <span class="text-sm font-medium bg-black/40 px-3 py-1 rounded-full backdrop-blur border border-white/10">Scanning...</span>
+            <button onclick="toggleFlash()" id="btn-flash" class="p-3 bg-white/10 backdrop-blur rounded-full text-white hover:bg-white/20 transition hidden">
+                <i class="ph ph-lightning text-xl"></i>
+            </button>
         </div>
 
-        <!-- Camera Preview -->
-        <div class="relative flex-1 flex items-center justify-center overflow-hidden">
-            <video id="camera-stream" autoplay playsinline class="absolute w-full h-full object-cover"></video>
+        <!-- Scanner Container -->
+        <div class="flex-1 flex items-center justify-center relative bg-black">
+            <div id="reader" class="w-full h-full object-cover"></div>
             
-            <!-- Focus Frame -->
-            <div class="relative w-64 h-48 border-2 border-white/30 rounded-xl z-10 flex items-center justify-center scanning">
-                <div class="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-blue-400 -mt-1 -ml-1 rounded-tl"></div>
-                <div class="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-blue-400 -mt-1 -mr-1 rounded-tr"></div>
-                <div class="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-blue-400 -mb-1 -ml-1 rounded-bl"></div>
-                <div class="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-blue-400 -mb-1 -mr-1 rounded-br"></div>
-                <div class="scan-line"></div>
+            <!-- Overlay UI -->
+            <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
+                <div class="w-64 h-64 border-2 border-white/30 rounded-3xl relative scanning">
+                    <div class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-blue-500 -mt-1 -ml-1 rounded-tl-lg"></div>
+                    <div class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-500 -mt-1 -mr-1 rounded-tr-lg"></div>
+                    <div class="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-500 -mb-1 -ml-1 rounded-bl-lg"></div>
+                    <div class="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-blue-500 -mb-1 -mr-1 rounded-br-lg"></div>
+                    <div class="scan-line top-1/2"></div>
+                </div>
             </div>
         </div>
 
-        <!-- Controls -->
-        <div class="h-32 bg-black flex items-center justify-center gap-8 pb-6">
-             <!-- File Upload Fallback -->
-            <label class="p-4 rounded-full bg-white/10 text-white cursor-pointer">
-                <i class="ph ph-image text-xl"></i>
-                <input type="file" accept="image/*" class="hidden" onchange="handleFileUpload(event)">
-            </label>
-
-            <!-- Shutter Button -->
-            <button onclick="capturePhoto()" class="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center">
-                <div class="w-16 h-16 bg-white rounded-full active:scale-90 transition"></div>
-            </button>
-
-            <!-- Flip Camera -->
-             <button onclick="switchCamera()" class="p-4 rounded-full bg-white/10 text-white">
-                <i class="ph ph-camera-rotate text-xl"></i>
+        <!-- Manual Entry Option -->
+        <div class="bg-black p-8 pb-10 flex flex-col items-center gap-4">
+            <p class="text-slate-400 text-sm">Align code within frame</p>
+            <button onclick="switchToManualEntry()" class="text-blue-400 text-sm font-medium hover:text-blue-300">
+                Or enter code manually
             </button>
         </div>
     </div>
 
     <!-- ==================== EDITOR VIEW ==================== -->
-    <div id="view-editor" class="view-section flex-col h-full w-full bg-slate-900 z-40 overflow-y-auto">
-        <div class="p-6">
-            <div class="flex items-center gap-4 mb-6">
-                <button onclick="navigate('view-home')" class="p-2 -ml-2 rounded-full hover:bg-white/10">
+    <div id="view-editor" class="view-section flex-col bg-slate-900 z-40 overflow-y-auto">
+        <div class="p-6 pb-32">
+            <div class="flex items-center gap-4 mb-8">
+                <button onclick="navigate('view-home')" class="p-2 -ml-2 rounded-full hover:bg-white/10 text-slate-300">
                     <i class="ph ph-arrow-left text-xl"></i>
                 </button>
-                <h2 class="text-xl font-bold">New Pass</h2>
+                <h2 class="text-xl font-bold">Save Pass</h2>
             </div>
 
-            <!-- Image Preview -->
-            <div class="w-full h-48 bg-slate-800 rounded-2xl mb-6 overflow-hidden relative shadow-lg">
-                <img id="editor-preview" src="" class="w-full h-full object-contain bg-white">
-                <div class="absolute bottom-2 right-2 bg-black/60 px-2 py-1 rounded text-xs text-white backdrop-blur">Preview</div>
+            <!-- Live Preview -->
+            <div id="editor-card-preview" class="w-full aspect-[1.58/1] rounded-2xl p-6 relative shadow-2xl transition-colors duration-300 flex flex-col justify-between mb-8 border border-white/10">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 id="preview-title" class="font-bold text-xl text-white drop-shadow-md">Pass Name</h3>
+                        <p class="text-white/70 text-xs mt-1">Digital Pass</p>
+                    </div>
+                    <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                        <i id="preview-icon" class="ph ph-ticket text-xl text-white"></i>
+                    </div>
+                </div>
+                <!-- Dynamic Code Preview -->
+                <div class="bg-white p-3 rounded-lg shadow-sm flex items-center justify-center overflow-hidden h-24">
+                     <div id="code-preview-container" class="w-full h-full flex items-center justify-center">
+                         <!-- Canvas or Img injected here -->
+                     </div>
+                </div>
             </div>
 
             <!-- Form -->
             <div class="space-y-6">
-                <!-- Title -->
+                <!-- Data Info (Read Only) -->
+                <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
+                    <label class="block text-xs uppercase tracking-wide text-slate-500 font-semibold mb-1">Scanned Data</label>
+                    <div class="flex items-center gap-2">
+                        <i class="ph ph-check-circle text-green-500"></i>
+                        <span id="scanned-data-display" class="font-mono text-sm text-slate-200 break-all">...</span>
+                    </div>
+                </div>
+
+                <!-- Title Input -->
                 <div>
-                    <label class="block text-sm text-slate-400 mb-2">Pass Name</label>
-                    <input type="text" id="pass-title" placeholder="e.g. Gym Membership" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition">
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Pass Name</label>
+                    <input type="text" id="pass-title" oninput="updatePreview()" placeholder="e.g. Starbucks, Gym, Library" class="w-full input-glass rounded-xl p-4 transition placeholder-slate-600">
                 </div>
 
                 <!-- Colors -->
                 <div>
-                    <label class="block text-sm text-slate-400 mb-2">Card Color</label>
-                    <div class="flex gap-4 overflow-x-auto py-2" id="color-picker">
+                    <label class="block text-sm font-medium text-slate-300 mb-3">Card Color</label>
+                    <div class="grid grid-cols-6 gap-2" id="color-picker">
                         <!-- Generated by JS -->
                     </div>
                 </div>
 
                 <!-- Icon -->
                 <div>
-                    <label class="block text-sm text-slate-400 mb-2">Icon</label>
+                    <label class="block text-sm font-medium text-slate-300 mb-3">Icon</label>
                     <div class="flex gap-3 overflow-x-auto py-2 no-scrollbar" id="icon-picker">
                         <!-- Generated by JS -->
                     </div>
                 </div>
 
-                <button onclick="savePass()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-4 rounded-xl shadow-lg shadow-blue-600/20 mt-4 transition active:scale-95">
-                    Save Pass
+                <!-- Manual Data Entry (Hidden by default unless manual mode) -->
+                <div id="manual-entry-fields" class="hidden space-y-4 pt-4 border-t border-slate-800">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">Code Data</label>
+                        <input type="text" id="manual-data" oninput="handleManualInput()" class="w-full input-glass rounded-xl p-4 font-mono">
+                    </div>
+                     <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">Format</label>
+                        <select id="manual-format" onchange="handleManualInput()" class="w-full input-glass rounded-xl p-4 bg-slate-800">
+                            <option value="CODE_128">Barcode (Code 128)</option>
+                            <option value="QR_CODE">QR Code</option>
+                            <option value="EAN_13">EAN-13 (Product)</option>
+                            <option value="UPC">UPC</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button onclick="savePass()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-600/20 mt-4 transition active:scale-95">
+                    Save to Wallet
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- ==================== DETAIL/FULLSCREEN VIEW ==================== -->
-    <div id="view-pass" class="view-section flex-col h-full w-full bg-slate-900 z-50">
+    <!-- ==================== PASS DETAIL VIEW ==================== -->
+    <div id="view-pass" class="view-section flex-col bg-slate-900 z-50">
         <!-- Navbar -->
         <div class="flex justify-between items-center p-6">
             <button onclick="closePassView()" class="p-2 rounded-full bg-slate-800 text-white hover:bg-slate-700">
                 <i class="ph ph-x text-xl"></i>
             </button>
-            <div class="flex gap-2">
+            <div class="flex gap-3">
                 <button onclick="deleteCurrentPass()" class="p-2 rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/20">
                     <i class="ph ph-trash text-xl"></i>
                 </button>
             </div>
         </div>
 
-        <!-- The Pass -->
-        <div class="flex-1 flex flex-col items-center justify-center p-6">
-            <div id="full-pass-card" class="w-full max-w-sm bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl p-6 shadow-2xl shadow-blue-900/40 transform transition-all">
+        <!-- The Pass Content -->
+        <div class="flex-1 flex flex-col items-center justify-center p-6 w-full max-w-md mx-auto">
+            
+            <!-- The Card -->
+            <div id="full-pass-card" class="w-full bg-gradient-to-br rounded-3xl p-6 shadow-2xl transform transition-all relative overflow-hidden">
+                
+                <!-- Shine effect -->
+                <div class="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
+
                 <!-- Card Header -->
-                <div class="flex items-start justify-between mb-8">
+                <div class="flex items-start justify-between mb-8 relative z-10">
                     <div>
-                        <h2 id="full-pass-title" class="text-2xl font-bold text-white drop-shadow-md">Gym Card</h2>
-                        <p class="text-white/70 text-sm mt-1">Scan at terminal</p>
+                        <h2 id="full-pass-title" class="text-2xl font-bold text-white drop-shadow-md break-words max-w-[200px]">Pass Name</h2>
+                        <p class="text-white/80 text-sm mt-1">Ready to scan</p>
                     </div>
-                    <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                        <i id="full-pass-icon" class="ph ph-barbell text-2xl text-white"></i>
+                    <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm shadow-inner">
+                        <i id="full-pass-icon" class="ph ph-ticket text-2xl text-white"></i>
                     </div>
                 </div>
 
-                <!-- Barcode Area -->
-                <div class="bg-white rounded-xl p-4 shadow-inner flex items-center justify-center min-h-[200px]">
-                    <img id="full-pass-image" src="" class="max-w-full max-h-[250px] object-contain mix-blend-multiply">
+                <!-- Barcode Area (High Contrast) -->
+                <div class="bg-white rounded-xl p-4 shadow-lg flex flex-col items-center justify-center min-h-[220px] relative z-10">
+                    <div id="full-pass-code-container" class="w-full flex items-center justify-center overflow-hidden">
+                        <!-- Code injected here -->
+                    </div>
+                    <p id="full-pass-data-text" class="text-black font-mono text-sm mt-3 tracking-widest font-bold text-center break-all">12345678</p>
                 </div>
 
-                <!-- Footer info -->
-                <div class="mt-6 flex justify-between items-center">
-                    <span class="text-xs text-white/50 font-mono" id="pass-id-display">ID: 839201</span>
-                    <div class="flex gap-1">
-                        <div class="w-2 h-2 rounded-full bg-white/80"></div>
-                        <div class="w-2 h-2 rounded-full bg-white/40"></div>
-                    </div>
+                <!-- Bottom Decoration -->
+                <div class="mt-6 flex justify-center opacity-50 relative z-10">
+                     <i class="ph ph-infinity text-white text-2xl"></i>
                 </div>
             </div>
 
-            <p class="text-slate-500 text-sm mt-8 flex items-center gap-2">
-                <i class="ph ph-sun-dim"></i> Increase brightness for scanning
-            </p>
+            <!-- Helper Text -->
+            <div class="mt-10 text-center space-y-2">
+                <p class="text-slate-400 text-sm flex items-center justify-center gap-2">
+                    <i class="ph ph-sun-dim text-yellow-400"></i> Max brightness recommended
+                </p>
+                <p class="text-slate-600 text-xs">Tap code to copy text</p>
+            </div>
         </div>
     </div>
-
-    <!-- Hidden Canvas for processing -->
-    <canvas id="process-canvas" class="hidden"></canvas>
 
     <!-- JavaScript Logic -->
     <script>
         // --- State Management ---
-        let passes = JSON.parse(localStorage.getItem('saved_passes')) || [];
-        let currentStream = null;
-        let currentImageBase64 = null;
-        let selectedColor = 'from-blue-500 to-blue-600';
+        let passes = JSON.parse(localStorage.getItem('saved_passes_v2')) || [];
+        
+        // Temporary state during creation
+        let tempPassData = {
+            type: null, // 'QR_CODE', 'CODE_128', etc.
+            data: null
+        };
+        let selectedColor = 'from-blue-600 to-cyan-500';
         let selectedIcon = 'ph-ticket';
+        let html5QrcodeScanner = null;
         let activePassId = null;
-        let currentFacingMode = 'environment';
 
         // --- Config Data ---
-        const colors = [
-            { id: 'blue', class: 'from-blue-500 to-cyan-500', bg: 'bg-blue-500' },
-            { id: 'purple', class: 'from-violet-500 to-purple-500', bg: 'bg-purple-500' },
-            { id: 'rose', class: 'from-rose-500 to-pink-500', bg: 'bg-rose-500' },
-            { id: 'orange', class: 'from-orange-500 to-amber-500', bg: 'bg-orange-500' },
-            { id: 'emerald', class: 'from-emerald-500 to-teal-500', bg: 'bg-emerald-500' },
-            { id: 'slate', class: 'from-slate-700 to-slate-800', bg: 'bg-slate-700' },
+        const gradients = [
+            { class: 'from-blue-600 to-cyan-500', bg: 'bg-blue-500' },
+            { class: 'from-violet-600 to-purple-600', bg: 'bg-purple-600' },
+            { class: 'from-fuchsia-600 to-pink-600', bg: 'bg-pink-600' },
+            { class: 'from-orange-500 to-amber-500', bg: 'bg-orange-500' },
+            { class: 'from-emerald-600 to-teal-500', bg: 'bg-emerald-600' },
+            { class: 'from-slate-700 to-slate-800', bg: 'bg-slate-700' },
+            { class: 'from-red-600 to-rose-600', bg: 'bg-red-600' },
+            { class: 'from-indigo-900 to-slate-900', bg: 'bg-indigo-900' },
         ];
 
         const icons = [
             'ph-ticket', 'ph-airplane-tilt', 'ph-barbell', 'ph-coffee', 
-            'ph-shopping-cart', 'ph-qr-code', 'ph-bus', 'ph-film-strip', 'ph-id-card'
+            'ph-shopping-cart', 'ph-qr-code', 'ph-bus', 'ph-film-strip', 
+            'ph-id-card', 'ph-book-open', 'ph-video-camera', 'ph-wifi-high'
         ];
 
         // --- Initialization ---
@@ -311,14 +395,8 @@
 
         // --- Navigation ---
         function navigate(viewId) {
-            // Stop camera if leaving camera view
-            if (viewId !== 'view-camera' && currentStream) {
-                stopCamera();
-            }
-
             document.querySelectorAll('.view-section').forEach(el => {
                 el.classList.remove('active');
-                // Small delay to allow display:none to apply after opacity fade out
                 setTimeout(() => {
                     if(!el.classList.contains('active')) el.style.display = 'none';
                 }, 300);
@@ -331,154 +409,225 @@
             target.classList.add('active');
         }
 
-        // --- Camera Logic ---
-        async function startCamera() {
-            navigate('view-camera');
-            try {
-                const constraints = {
-                    video: { 
-                        facingMode: currentFacingMode,
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    }
-                };
-                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-                const video = document.getElementById('camera-stream');
-                video.srcObject = currentStream;
-            } catch (err) {
-                console.error("Camera error:", err);
-                alert("Could not access camera. Please use the upload button.");
+        // --- Scanner Logic (using html5-qrcode) ---
+        function startScanner() {
+            navigate('view-scanner');
+            
+            // Initialize scanner if not exists
+            if (!html5QrcodeScanner) {
+                html5QrcodeScanner = new Html5Qrcode("reader");
             }
+
+            const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
+            
+            html5QrcodeScanner.start(
+                { facingMode: "environment" }, 
+                config, 
+                onScanSuccess,
+                onScanFailure
+            ).catch(err => {
+                console.error("Error starting scanner", err);
+                alert("Camera permission denied or not available.");
+                navigate('view-home');
+            });
         }
 
-        function stopCamera() {
-            if (currentStream) {
-                currentStream.getTracks().forEach(track => track.stop());
-                currentStream = null;
+        function stopScanner() {
+            if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
+                html5QrcodeScanner.stop().then(() => {
+                    console.log("Scanner stopped");
+                    document.getElementById('reader').innerHTML = ""; // Cleanup
+                }).catch(err => console.error("Failed to stop scanner", err));
             }
-        }
-
-        function closeCamera() {
-            stopCamera();
             navigate('view-home');
         }
 
-        function switchCamera() {
-            stopCamera();
-            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-            startCamera();
-        }
-
-        function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    processImage(e.target.result);
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        function capturePhoto() {
-            const video = document.getElementById('camera-stream');
-            const canvas = document.getElementById('process-canvas');
-            const context = canvas.getContext('2d');
-
-            // Set canvas dimensions to match video
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-
-            // Draw current video frame
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        function onScanSuccess(decodedText, decodedResult) {
+            // Success!
+            console.log(`Scan result: ${decodedText}`, decodedResult);
             
-            // Convert to base64
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-            processImage(dataUrl);
+            // Haptic feedback
+            if (navigator.vibrate) navigator.vibrate(200);
+
+            // Stop scanning
+            html5QrcodeScanner.stop().then(() => {
+                // Determine format
+                let format = decodedResult.result.format?.formatName || 'CODE_128'; 
+                // Map common names to what we use for generation
+                if (format.includes('QR')) format = 'QR_CODE';
+                
+                prepareEditor(decodedText, format);
+            }).catch(err => console.error(err));
         }
 
-        function processImage(dataUrl) {
-            // Compress and Resize logic
-            const img = new Image();
-            img.src = dataUrl;
-            img.onload = () => {
-                const canvas = document.getElementById('process-canvas');
-                const ctx = canvas.getContext('2d');
-                
-                // Max width 800px to save storage
-                const maxWidth = 800;
-                const scale = maxWidth / img.width;
-                const width = Math.min(img.width, maxWidth);
-                const height = img.height * (img.width > maxWidth ? scale : 1);
+        function onScanFailure(error) {
+            // handle scan failure, usually better to ignore and keep scanning.
+            // console.warn(`Code scan error = ${error}`);
+        }
 
-                canvas.width = width;
-                canvas.height = height;
-                ctx.drawImage(img, 0, 0, width, height);
+        function toggleFlash() {
+             // Html5Qrcode doesn't support flash toggle easily on all devices yet, 
+             // but we can prepare the UI for it.
+             alert("Flash toggling depends on device support.");
+        }
 
-                // Save low quality jpeg for storage
-                currentImageBase64 = canvas.toDataURL('image/jpeg', 0.6);
-                
-                // Go to Editor
-                document.getElementById('editor-preview').src = currentImageBase64;
-                stopCamera();
-                navigate('view-editor');
-            };
+        // --- Manual Entry ---
+        function switchToManualEntry() {
+            if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
+                html5QrcodeScanner.stop();
+            }
+            prepareEditor('', 'CODE_128', true);
+        }
+
+        function handleManualInput() {
+            const data = document.getElementById('manual-data').value;
+            const format = document.getElementById('manual-format').value;
+            tempPassData.data = data;
+            tempPassData.type = format;
+            document.getElementById('scanned-data-display').innerText = data || 'Waiting for input...';
+            renderCodePreview('code-preview-container', data, format);
         }
 
         // --- Editor Logic ---
+        function prepareEditor(data, format, isManual = false) {
+            tempPassData = { data, type: format };
+            
+            navigate('view-editor');
+            
+            // Reset fields
+            document.getElementById('pass-title').value = '';
+            document.getElementById('scanned-data-display').innerText = data || "Manual Entry Mode";
+            
+            const manualDiv = document.getElementById('manual-entry-fields');
+            if (isManual) {
+                manualDiv.classList.remove('hidden');
+                document.getElementById('manual-data').value = '';
+            } else {
+                manualDiv.classList.add('hidden');
+            }
+
+            updatePreview();
+        }
+
         function setupEditorUI() {
             // Colors
             const colorContainer = document.getElementById('color-picker');
-            colorContainer.innerHTML = colors.map(c => `
+            colorContainer.innerHTML = gradients.map((c, i) => `
                 <div onclick="selectColor('${c.class}', this)" 
-                     class="color-dot w-10 h-10 rounded-full ${c.bg} flex-shrink-0 cursor-pointer ${c.class === selectedColor ? 'selected' : ''}">
+                     class="w-10 h-10 rounded-full ${c.bg} cursor-pointer transition transform hover:scale-110 ${i===0 ? 'ring-2 ring-white scale-110' : ''}">
                 </div>
             `).join('');
 
             // Icons
             const iconContainer = document.getElementById('icon-picker');
-            iconContainer.innerHTML = icons.map(i => `
+            iconContainer.innerHTML = icons.map((i, idx) => `
                 <div onclick="selectIcon('${i}', this)" 
-                     class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center cursor-pointer border border-slate-700 hover:border-blue-500 transition ${i === selectedIcon ? 'border-blue-500 bg-slate-700' : ''}">
+                     class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center cursor-pointer border border-slate-700 hover:border-blue-500 transition shrink-0 ${idx===0 ? 'border-blue-500 bg-slate-700' : ''}">
                     <i class="ph ${i} text-2xl text-white"></i>
                 </div>
             `).join('');
         }
 
-        function selectColor(colorClass, el) {
-            selectedColor = colorClass;
-            document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('selected'));
-            el.classList.add('selected');
+        function selectColor(gradientClass, el) {
+            selectedColor = gradientClass;
+            // Update UI selection
+            Array.from(document.getElementById('color-picker').children).forEach(c => c.classList.remove('ring-2', 'ring-white', 'scale-110'));
+            el.classList.add('ring-2', 'ring-white', 'scale-110');
+            updatePreview();
         }
 
         function selectIcon(iconClass, el) {
             selectedIcon = iconClass;
-            document.querySelectorAll('#icon-picker > div').forEach(d => {
-                d.classList.remove('border-blue-500', 'bg-slate-700');
-                d.classList.add('border-slate-700');
+            // Update UI selection
+            Array.from(document.getElementById('icon-picker').children).forEach(c => {
+                c.classList.remove('border-blue-500', 'bg-slate-700');
+                c.classList.add('border-slate-700');
             });
             el.classList.remove('border-slate-700');
             el.classList.add('border-blue-500', 'bg-slate-700');
+            updatePreview();
+        }
+
+        function updatePreview() {
+            const title = document.getElementById('pass-title').value || 'Pass Name';
+            const card = document.getElementById('editor-card-preview');
+            
+            // Apply gradient
+            card.className = `w-full aspect-[1.58/1] rounded-2xl p-6 relative shadow-xl transition-colors duration-300 flex flex-col justify-between mb-8 border border-white/10 bg-gradient-to-br ${selectedColor}`;
+            
+            document.getElementById('preview-title').innerText = title;
+            document.getElementById('preview-icon').className = `ph ${selectedIcon} text-xl text-white`;
+
+            // Render Code in Preview
+            if (tempPassData.data) {
+                renderCodePreview('code-preview-container', tempPassData.data, tempPassData.type);
+            }
+        }
+
+        function renderCodePreview(containerId, data, format) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = ''; // Clear previous
+
+            if(!data) return;
+
+            try {
+                if (format === 'QR_CODE') {
+                    // Render QR
+                    const qrDiv = document.createElement('div');
+                    new QRCode(qrDiv, {
+                        text: data,
+                        width: 100,
+                        height: 100,
+                        colorDark : "#000000",
+                        colorLight : "#ffffff",
+                        correctLevel : QRCode.CorrectLevel.H
+                    });
+                    // Scale it down to fit container if needed
+                    qrDiv.style.transform = "scale(0.8)";
+                    container.appendChild(qrDiv);
+                } else {
+                    // Render Barcode
+                    const canvas = document.createElement('canvas');
+                    container.appendChild(canvas);
+                    JsBarcode(canvas, data, {
+                        format: (format === 'EAN_13' || format === 'UPC') ? format : "CODE128",
+                        width: 2,
+                        height: 50,
+                        displayValue: false,
+                        margin: 0,
+                        background: "#ffffff",
+                        lineColor: "#000000"
+                    });
+                    canvas.style.maxWidth = "100%";
+                    canvas.style.height = "100%";
+                    canvas.style.objectFit = "contain";
+                }
+            } catch (e) {
+                console.error("Rendering error", e);
+                container.innerHTML = '<span class="text-red-500 text-xs">Invalid Data</span>';
+            }
         }
 
         function savePass() {
             const title = document.getElementById('pass-title').value.trim() || 'Untitled Pass';
             
+            if (!tempPassData.data) {
+                alert("No code data to save!");
+                return;
+            }
+
             const newPass = {
                 id: Date.now(),
                 title: title,
-                image: currentImageBase64,
+                data: tempPassData.data,
+                format: tempPassData.type,
                 color: selectedColor,
                 icon: selectedIcon,
                 date: new Date().toLocaleDateString()
             };
 
-            passes.unshift(newPass); // Add to top
-            localStorage.setItem('saved_passes', JSON.stringify(passes));
-            
-            // Reset form
-            document.getElementById('pass-title').value = '';
-            
+            passes.unshift(newPass);
+            localStorage.setItem('saved_passes_v2', JSON.stringify(passes));
             renderPassList();
             navigate('view-home');
         }
@@ -488,10 +637,9 @@
             const grid = document.getElementById('pass-grid');
             const emptyState = document.getElementById('empty-state');
             
-            // Remove current cards (keep empty state div)
-            Array.from(grid.children).forEach(child => {
-                if(child.id !== 'empty-state') child.remove();
-            });
+            // Clear grid except empty state
+            grid.innerHTML = '';
+            grid.appendChild(emptyState);
 
             if (passes.length === 0) {
                 emptyState.classList.remove('hidden');
@@ -502,21 +650,20 @@
 
                 passes.forEach(pass => {
                     const el = document.createElement('div');
-                    el.className = `glass-panel pass-card rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-white/5`;
+                    el.className = `glass-panel pass-card rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-white/5 active:scale-95 transition`;
                     el.onclick = () => openPass(pass.id);
                     
-                    // Extract color for left bar border
-                    const bgClass = pass.color;
-
                     el.innerHTML = `
-                        <div class="w-12 h-12 rounded-full bg-gradient-to-br ${bgClass} flex items-center justify-center shadow-lg">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br ${pass.color} flex items-center justify-center shadow-lg shrink-0">
                             <i class="ph ${pass.icon} text-white text-xl"></i>
                         </div>
-                        <div class="flex-1">
-                            <h3 class="font-bold text-lg">${pass.title}</h3>
-                            <p class="text-xs text-slate-400">Added ${pass.date}</p>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="font-bold text-lg truncate">${pass.title}</h3>
+                            <p class="text-xs text-slate-400 font-mono truncate">${pass.data}</p>
                         </div>
-                        <i class="ph ph-caret-right text-slate-500"></i>
+                        <div class="bg-white/10 p-2 rounded-lg">
+                             <i class="ph ph-qr-code text-slate-300"></i>
+                        </div>
                     `;
                     grid.appendChild(el);
                 });
@@ -530,15 +677,47 @@
 
             activePassId = id;
             
+            // Populate Full Screen Card
             const card = document.getElementById('full-pass-card');
-            
-            // Remove old gradient classes and add new one
-            card.className = `w-full max-w-sm rounded-3xl p-6 shadow-2xl transform transition-all bg-gradient-to-br ${pass.color}`;
+            card.className = `w-full bg-gradient-to-br rounded-3xl p-6 shadow-2xl transform transition-all relative overflow-hidden ${pass.color}`;
             
             document.getElementById('full-pass-title').innerText = pass.title;
             document.getElementById('full-pass-icon').className = `ph ${pass.icon} text-2xl text-white`;
-            document.getElementById('full-pass-image').src = pass.image;
-            document.getElementById('pass-id-display').innerText = `ID: ${pass.id}`;
+            document.getElementById('full-pass-data-text').innerText = pass.data;
+
+            // Render crisp code
+            const container = document.getElementById('full-pass-code-container');
+            container.innerHTML = '';
+            
+            if (pass.format === 'QR_CODE') {
+                const qrDiv = document.createElement('div');
+                new QRCode(qrDiv, {
+                    text: pass.data,
+                    width: 200,
+                    height: 200,
+                    colorDark : "#000000",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+                container.appendChild(qrDiv);
+            } else {
+                 const canvas = document.createElement('canvas');
+                 container.appendChild(canvas);
+                 try {
+                     JsBarcode(canvas, pass.data, {
+                        format: (pass.format === 'EAN_13' || pass.format === 'UPC') ? pass.format : "CODE128",
+                        width: 3,
+                        height: 100,
+                        displayValue: false,
+                        margin: 10,
+                        background: "#ffffff"
+                    });
+                    canvas.style.maxWidth = "100%";
+                 } catch(e) {
+                     // Fallback for weird formats
+                     container.innerText = "Error rendering code";
+                 }
+            }
 
             navigate('view-pass');
         }
@@ -549,21 +728,30 @@
         }
 
         function deleteCurrentPass() {
-            if (confirm('Are you sure you want to delete this pass?')) {
+            if (confirm('Delete this pass?')) {
                 passes = passes.filter(p => p.id !== activePassId);
-                localStorage.setItem('saved_passes', JSON.stringify(passes));
+                localStorage.setItem('saved_passes_v2', JSON.stringify(passes));
                 renderPassList();
                 closePassView();
             }
         }
 
-        function openSettings() {
-            // Simple clear data for now
-            if(confirm("Clear all saved data? This cannot be undone.")) {
-                localStorage.clear();
-                location.reload();
+        function clearData() {
+            if(confirm("Delete ALL passes?")) {
+                localStorage.removeItem('saved_passes_v2');
+                passes = [];
+                renderPassList();
             }
         }
+
+        // Copy text on click
+        document.getElementById('full-pass-card').addEventListener('click', () => {
+             const pass = passes.find(p => p.id === activePassId);
+             if(pass) {
+                 navigator.clipboard.writeText(pass.data);
+                 alert("Code copied to clipboard!");
+             }
+        });
 
     </script>
 </body>
