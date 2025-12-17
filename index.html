@@ -2,667 +2,747 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0f172a">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>PassPocket</title>
+    <title>PassPocket Ultra</title>
     
-    <!-- Tailwind CSS -->
+    <!-- Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-
-    <!-- Scanning & Generation Libraries -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'scan': 'scan 2s linear infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        },
+                        scan: {
+                            '0%': { top: '0%', opacity: '0' },
+                            '10%': { opacity: '1' },
+                            '90%': { opacity: '1' },
+                            '100%': { top: '100%', opacity: '0' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
 
     <style>
-        /* Custom Styles & Animations */
+        /* --- Core UI --- */
+        :root {
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-bg: rgba(20, 20, 25, 0.6);
+            --neon-accent: #6366f1;
+        }
+
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0f172a;
+            background-color: #050507;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(76, 29, 149, 0.15), transparent 25%), 
+                radial-gradient(circle at 85% 30%, rgba(56, 189, 248, 0.1), transparent 25%);
             color: #ffffff;
             -webkit-tap-highlight-color: transparent;
-            overscroll-behavior-y: none; /* Prevent pull-to-refresh */
+            overscroll-behavior-y: none;
         }
 
-        /* Hide scrollbar */
-        ::-webkit-scrollbar {
-            width: 0px;
-            background: transparent;
-        }
-
+        /* --- Glassmorphism --- */
         .glass-panel {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .input-glass {
+            background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: all 0.3s ease;
+        }
+        .input-glass:focus {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--neon-accent);
+            outline: none;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
         }
 
-        .pass-card {
-            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        /* --- 3D Card Effect --- */
+        .card-container {
+            perspective: 1000px;
+        }
+        
+        .premium-card {
             transform-style: preserve-3d;
+            transition: transform 0.1s ease-out; /* Smooth tilt */
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            overflow: hidden;
         }
-
-        .pass-card:active {
-            transform: scale(0.97);
-        }
-
-        .scan-line {
+        
+        /* The Glare Effect */
+        .premium-card::before {
+            content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background: #ef4444;
-            box-shadow: 0 0 4px #ef4444;
-            animation: scan 2s infinite linear;
-            display: none;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(
+                125deg, 
+                transparent 0%, 
+                rgba(255,255,255,0.0) 30%, 
+                rgba(255,255,255,0.1) 40%, 
+                rgba(255,255,255,0.2) 50%, 
+                rgba(255,255,255,0.1) 60%, 
+                rgba(255,255,255,0.0) 70%, 
+                transparent 100%
+            );
+            background-size: 200% 200%;
+            mix-blend-mode: overlay;
+            opacity: 0.7;
+            pointer-events: none;
         }
 
-        .scanning .scan-line {
-            display: block;
-        }
-
-        @keyframes scan {
-            0% { top: 0%; opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { top: 100%; opacity: 0; }
-        }
-
-        /* View Transitions */
+        /* --- View Transitions --- */
         .view-section {
             display: none;
             opacity: 0;
-            transition: opacity 0.3s ease;
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
+            transform: scale(0.98);
+            transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            overflow-y: auto;
+            z-index: 10;
         }
 
         .view-section.active {
             display: flex;
             opacity: 1;
-            z-index: 10;
+            transform: scale(1);
         }
 
-        .text-gradient {
-            background: linear-gradient(to right, #38bdf8, #818cf8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+        /* Hide Scrollbar */
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
 
-        /* Custom Inputs */
-        .input-glass {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: white;
-        }
-        .input-glass:focus {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: #38bdf8;
-            outline: none;
-        }
-
-        /* Brightness simulation for barcode view */
-        .max-brightness {
-            filter: brightness(1.2) contrast(1.1);
-        }
-
-        .font-mono {
-            font-family: 'JetBrains Mono', monospace;
-        }
-        
-        /* Scanner overlay cleanup */
-        #reader__scan_region {
-            background: transparent !important;
-        }
+        /* Scanner */
         #reader video {
             object-fit: cover;
-            border-radius: 12px;
+            border-radius: 16px;
         }
     </style>
 </head>
-<body class="h-full w-full bg-slate-900 text-white">
+<body class="antialiased">
 
     <!-- ==================== HOME VIEW ==================== -->
-    <div id="view-home" class="view-section active flex-col p-6 overflow-y-auto">
-        <!-- Header -->
-        <div class="flex justify-between items-center mb-8 mt-2">
+    <div id="view-home" class="view-section active flex-col px-6 pt-8 pb-32">
+        <!-- Top Bar -->
+        <div class="flex justify-between items-center mb-8 sticky top-0 z-20 py-2 backdrop-blur-md -mx-6 px-6">
             <div>
-                <h1 class="text-3xl font-bold tracking-tight text-gradient">PassPocket</h1>
-                <p class="text-slate-400 text-sm mt-1">Digital Wallet</p>
+                <h1 class="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">PassPocket</h1>
+                <p class="text-xs font-semibold text-indigo-400 tracking-wider uppercase mt-1">Ultra Wallet</p>
             </div>
-            <button onclick="clearData()" class="p-2 rounded-full hover:bg-white/10 transition text-slate-400">
-                <i class="ph ph-trash text-xl"></i>
+            <button onclick="navigate('view-settings')" class="w-10 h-10 rounded-full glass-panel flex items-center justify-center text-slate-300 hover:text-white transition active:scale-95">
+                <i class="ph ph-gear text-xl"></i>
             </button>
         </div>
 
-        <!-- Grid of Passes -->
-        <div id="pass-grid" class="flex-1 grid grid-cols-1 gap-4 pb-24 content-start">
-            <!-- Empty State (Populated by JS) -->
-            <div id="empty-state" class="hidden flex flex-col items-center justify-center h-64 text-center mt-12">
-                <div class="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6 ring-1 ring-white/10">
-                    <i class="ph ph-qr-code text-4xl text-slate-500"></i>
-                </div>
-                <h3 class="text-xl font-medium text-white">No passes yet</h3>
-                <p class="text-slate-400 text-sm max-w-xs mt-2 leading-relaxed">Scan your physical cards to declutter your wallet.</p>
-                <button onclick="startScanner()" class="mt-8 text-blue-400 font-medium text-sm hover:text-blue-300">
-                    Scan a card now &rarr;
-                </button>
-            </div>
+        <!-- Filter Tags -->
+        <div class="flex gap-3 overflow-x-auto pb-4 mb-4 no-scrollbar scroll-smooth" id="home-filters">
+            <button onclick="filterPasses('all')" class="filter-chip active px-4 py-2 rounded-full text-xs font-medium bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 whitespace-nowrap transition">All Passes</button>
+            <button onclick="filterPasses('Travel')" class="filter-chip px-4 py-2 rounded-full text-xs font-medium bg-white/5 text-slate-400 border border-white/10 whitespace-nowrap hover:bg-white/10 transition">Travel</button>
+            <button onclick="filterPasses('Event')" class="filter-chip px-4 py-2 rounded-full text-xs font-medium bg-white/5 text-slate-400 border border-white/10 whitespace-nowrap hover:bg-white/10 transition">Events</button>
+            <button onclick="filterPasses('Membership')" class="filter-chip px-4 py-2 rounded-full text-xs font-medium bg-white/5 text-slate-400 border border-white/10 whitespace-nowrap hover:bg-white/10 transition">Memberships</button>
         </div>
 
-        <!-- Floating Action Button -->
-        <div class="fixed bottom-8 left-0 w-full flex justify-center z-20 pointer-events-none">
-            <button onclick="startScanner()" class="pointer-events-auto group flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-4 rounded-full shadow-lg shadow-blue-500/30 transition-all transform hover:scale-105 active:scale-95">
-                <i class="ph ph-scan text-xl font-bold"></i>
-                <span class="font-semibold">Scan New</span>
+        <!-- Pass Grid -->
+        <div id="pass-grid" class="grid grid-cols-1 gap-5 w-full max-w-lg mx-auto">
+            <!-- Passes Injected JS -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="hidden flex-col items-center justify-center mt-20 opacity-50">
+            <div class="w-24 h-24 rounded-3xl bg-gradient-to-br from-slate-800 to-black border border-white/10 flex items-center justify-center mb-6 animate-float">
+                <i class="ph ph-wallet text-4xl text-slate-500"></i>
+            </div>
+            <h3 class="text-lg font-medium text-white">Wallet Empty</h3>
+            <p class="text-slate-500 text-sm mt-2">Tap + to add your first pass</p>
+        </div>
+
+        <!-- FAB -->
+        <div class="fixed bottom-8 left-1/2 -translate-x-1/2 z-30">
+            <button onclick="startScanner()" class="group relative flex items-center justify-center w-16 h-16 rounded-full bg-white text-black shadow-xl shadow-white/20 transition hover:scale-105 active:scale-90">
+                <div class="absolute inset-0 rounded-full border-2 border-white/50 animate-pulse-slow"></div>
+                <i class="ph ph-plus text-2xl font-bold"></i>
             </button>
         </div>
     </div>
 
     <!-- ==================== SCANNER VIEW ==================== -->
     <div id="view-scanner" class="view-section flex-col bg-black z-50">
-        <!-- Controls -->
-        <div class="absolute top-0 w-full p-6 flex justify-between items-center z-20 bg-gradient-to-b from-black/80 to-transparent">
-            <button onclick="stopScanner()" class="p-3 bg-white/10 backdrop-blur rounded-full text-white hover:bg-white/20 transition">
+        <div class="absolute top-0 w-full p-6 flex justify-between items-center z-20 bg-gradient-to-b from-black/90 to-transparent">
+            <button onclick="stopScanner()" class="p-3 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition">
                 <i class="ph ph-x text-xl"></i>
             </button>
-            <span class="text-sm font-medium bg-black/40 px-3 py-1 rounded-full backdrop-blur border border-white/10">Scanning...</span>
-            <button onclick="toggleFlash()" id="btn-flash" class="p-3 bg-white/10 backdrop-blur rounded-full text-white hover:bg-white/20 transition hidden">
+            <div class="bg-black/40 backdrop-blur-md border border-white/10 px-4 py-1.5 rounded-full flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                <span class="text-xs font-medium tracking-wide">LIVE SCAN</span>
+            </div>
+            <button onclick="alert('Flash not supported in web browser')" class="p-3 bg-white/10 backdrop-blur-md rounded-full text-white opacity-50">
                 <i class="ph ph-lightning text-xl"></i>
             </button>
         </div>
 
-        <!-- Scanner Container -->
-        <div class="flex-1 flex items-center justify-center relative bg-black">
-            <div id="reader" class="w-full h-full object-cover"></div>
+        <div class="flex-1 relative flex items-center justify-center bg-slate-900">
+            <div id="reader" class="w-full h-full object-cover opacity-80"></div>
             
-            <!-- Overlay UI -->
-            <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
-                <div class="w-64 h-64 border-2 border-white/30 rounded-3xl relative scanning">
-                    <div class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-blue-500 -mt-1 -ml-1 rounded-tl-lg"></div>
-                    <div class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-500 -mt-1 -mr-1 rounded-tr-lg"></div>
-                    <div class="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-500 -mb-1 -ml-1 rounded-bl-lg"></div>
-                    <div class="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-blue-500 -mb-1 -mr-1 rounded-br-lg"></div>
-                    <div class="scan-line top-1/2"></div>
+            <!-- Futuristic Overlay -->
+            <div class="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
+                <div class="w-72 h-48 border border-white/20 rounded-2xl relative overflow-hidden backdrop-brightness-125">
+                    <div class="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-indigo-500"></div>
+                    <div class="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-indigo-500"></div>
+                    <div class="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-indigo-500"></div>
+                    <div class="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-indigo-500"></div>
+                    <div class="absolute top-0 left-0 w-full h-1 bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.8)] animate-scan"></div>
                 </div>
+                <p class="mt-8 text-xs font-mono text-indigo-300 bg-black/50 px-3 py-1 rounded">ALIGN BARCODE / QR</p>
             </div>
         </div>
 
-        <!-- Manual Entry Option -->
         <div class="bg-black p-8 pb-10 flex flex-col items-center gap-4">
-            <p class="text-slate-400 text-sm">Align code within frame</p>
-            <button onclick="switchToManualEntry()" class="text-blue-400 text-sm font-medium hover:text-blue-300">
-                Or enter code manually
+            <button onclick="prepareEditor('', 'CODE_128', true)" class="text-slate-400 text-sm hover:text-white transition flex items-center gap-2">
+                <i class="ph ph-keyboard"></i> Manual Entry
             </button>
         </div>
     </div>
 
     <!-- ==================== EDITOR VIEW ==================== -->
-    <div id="view-editor" class="view-section flex-col bg-slate-900 z-40 overflow-y-auto">
-        <div class="p-6 pb-32">
-            <div class="flex items-center gap-4 mb-8">
-                <button onclick="navigate('view-home')" class="p-2 -ml-2 rounded-full hover:bg-white/10 text-slate-300">
+    <div id="view-editor" class="view-section flex-col bg-[#050507] z-40">
+        <div class="p-6 pb-32 max-w-lg mx-auto w-full">
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-6">
+                <button onclick="navigate('view-home')" class="p-2 -ml-2 rounded-full hover:bg-white/5 text-slate-300">
                     <i class="ph ph-arrow-left text-xl"></i>
                 </button>
-                <h2 class="text-xl font-bold">Save Pass</h2>
+                <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500">Customize</h2>
+                <div class="w-8"></div>
             </div>
 
-            <!-- Live Preview -->
-            <div id="editor-card-preview" class="w-full aspect-[1.58/1] rounded-2xl p-6 relative shadow-2xl transition-colors duration-300 flex flex-col justify-between mb-8 border border-white/10">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <h3 id="preview-title" class="font-bold text-xl text-white drop-shadow-md">Pass Name</h3>
-                        <p class="text-white/70 text-xs mt-1">Digital Pass</p>
+            <!-- Preview Card -->
+            <div class="card-container mb-8 w-full aspect-[1.58/1]">
+                <div id="editor-preview" class="premium-card w-full h-full rounded-2xl p-6 flex flex-col justify-between shadow-2xl shadow-indigo-900/20 border border-white/10 transition-all duration-300">
+                    <!-- Dynamic BG is set via inline style -->
+                    <div class="absolute inset-0 bg-black/20 z-0"></div> <!-- Dimmer overlay for text readability -->
+                    
+                    <div class="relative z-10 flex justify-between items-start">
+                        <div>
+                            <h3 id="prev-title" class="font-bold text-2xl text-white drop-shadow-lg tracking-tight">Pass Name</h3>
+                            <div id="prev-category" class="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-white/20 text-white backdrop-blur-md">Membership</div>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner border border-white/10">
+                            <i id="prev-icon" class="ph ph-ticket text-xl text-white"></i>
+                        </div>
                     </div>
-                    <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-                        <i id="preview-icon" class="ph ph-ticket text-xl text-white"></i>
+                    
+                    <div class="relative z-10">
+                        <div class="bg-white/90 backdrop-blur p-2 rounded-lg inline-block shadow-lg">
+                            <div class="h-8 flex items-center justify-center px-2">
+                                <span class="text-black font-mono font-bold text-xs tracking-widest" id="prev-code-text">CODE PREVIEW</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <!-- Dynamic Code Preview -->
-                <div class="bg-white p-3 rounded-lg shadow-sm flex items-center justify-center overflow-hidden h-24">
-                     <div id="code-preview-container" class="w-full h-full flex items-center justify-center">
-                         <!-- Canvas or Img injected here -->
-                     </div>
                 </div>
             </div>
 
-            <!-- Form -->
+            <!-- Customization Form -->
             <div class="space-y-6">
-                <!-- Data Info (Read Only) -->
-                <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
-                    <label class="block text-xs uppercase tracking-wide text-slate-500 font-semibold mb-1">Scanned Data</label>
-                    <div class="flex items-center gap-2">
-                        <i class="ph ph-check-circle text-green-500"></i>
-                        <span id="scanned-data-display" class="font-mono text-sm text-slate-200 break-all">...</span>
+                <!-- Info -->
+                <div class="glass-panel p-4 rounded-xl flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                            <i class="ph ph-check text-green-400"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-400 uppercase font-semibold">Data Captured</p>
+                            <p id="editor-data-display" class="font-mono text-sm text-white truncate max-w-[200px]">...</p>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Title Input -->
-                <div>
-                    <label class="block text-sm font-medium text-slate-300 mb-2">Pass Name</label>
-                    <input type="text" id="pass-title" oninput="updatePreview()" placeholder="e.g. Starbucks, Gym, Library" class="w-full input-glass rounded-xl p-4 transition placeholder-slate-600">
-                </div>
-
-                <!-- Colors -->
-                <div>
-                    <label class="block text-sm font-medium text-slate-300 mb-3">Card Color</label>
-                    <div class="grid grid-cols-6 gap-2" id="color-picker">
-                        <!-- Generated by JS -->
-                    </div>
-                </div>
-
-                <!-- Icon -->
-                <div>
-                    <label class="block text-sm font-medium text-slate-300 mb-3">Icon</label>
-                    <div class="flex gap-3 overflow-x-auto py-2 no-scrollbar" id="icon-picker">
-                        <!-- Generated by JS -->
-                    </div>
-                </div>
-
-                <!-- Manual Data Entry (Hidden by default unless manual mode) -->
-                <div id="manual-entry-fields" class="hidden space-y-4 pt-4 border-t border-slate-800">
+                <!-- Inputs -->
+                <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-slate-300 mb-2">Code Data</label>
-                        <input type="text" id="manual-data" oninput="handleManualInput()" class="w-full input-glass rounded-xl p-4 font-mono">
+                        <label class="text-xs font-semibold text-slate-400 ml-1 mb-2 block">NAME</label>
+                        <input type="text" id="inp-title" oninput="updateEditorPreview()" placeholder="E.g. Gym, Flight to NYC" class="w-full input-glass rounded-xl p-4 text-sm font-medium">
                     </div>
-                     <div>
-                        <label class="block text-sm font-medium text-slate-300 mb-2">Format</label>
-                        <select id="manual-format" onchange="handleManualInput()" class="w-full input-glass rounded-xl p-4 bg-slate-800">
-                            <option value="CODE_128">Barcode (Code 128)</option>
-                            <option value="QR_CODE">QR Code</option>
-                            <option value="EAN_13">EAN-13 (Product)</option>
-                            <option value="UPC">UPC</option>
-                        </select>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs font-semibold text-slate-400 ml-1 mb-2 block">CATEGORY</label>
+                            <select id="inp-category" onchange="updateEditorPreview()" class="w-full input-glass rounded-xl p-4 text-sm appearance-none bg-transparent">
+                                <option value="General" class="bg-slate-900">General</option>
+                                <option value="Membership" class="bg-slate-900">Membership</option>
+                                <option value="Travel" class="bg-slate-900">Travel</option>
+                                <option value="Event" class="bg-slate-900">Event</option>
+                                <option value="Coupon" class="bg-slate-900">Coupon</option>
+                                <option value="ID" class="bg-slate-900">ID Card</option>
+                            </select>
+                        </div>
+                        <div>
+                             <label class="text-xs font-semibold text-slate-400 ml-1 mb-2 block">ICON</label>
+                             <div class="relative">
+                                 <select id="inp-icon" onchange="updateEditorPreview()" class="w-full input-glass rounded-xl p-4 text-sm appearance-none bg-transparent pl-10">
+                                    <option value="ph-ticket" class="bg-slate-900">Ticket</option>
+                                    <option value="ph-airplane-tilt" class="bg-slate-900">Plane</option>
+                                    <option value="ph-barbell" class="bg-slate-900">Gym</option>
+                                    <option value="ph-shopping-cart" class="bg-slate-900">Shop</option>
+                                    <option value="ph-coffee" class="bg-slate-900">Coffee</option>
+                                    <option value="ph-id-card" class="bg-slate-900">ID</option>
+                                    <option value="ph-wifi-high" class="bg-slate-900">Wifi</option>
+                                </select>
+                                <i class="ph ph-star absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Visual Style Selector -->
+                    <div>
+                        <label class="text-xs font-semibold text-slate-400 ml-1 mb-2 block">ARTWORK</label>
+                        
+                        <!-- Tabs -->
+                        <div class="flex gap-2 mb-3">
+                            <button onclick="setArtMode('gradient')" id="tab-gradient" class="flex-1 py-2 rounded-lg bg-white/10 text-xs font-medium transition hover:bg-white/20">Gradients</button>
+                            <button onclick="setArtMode('upload')" id="tab-upload" class="flex-1 py-2 rounded-lg bg-transparent border border-white/10 text-slate-400 text-xs font-medium transition hover:bg-white/5">Upload Image</button>
+                        </div>
+
+                        <!-- Gradients -->
+                        <div id="art-gradient-panel" class="grid grid-cols-5 gap-3">
+                            <!-- Generated by JS -->
+                        </div>
+
+                        <!-- Upload -->
+                        <div id="art-upload-panel" class="hidden">
+                            <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-white/20 rounded-xl cursor-pointer hover:border-indigo-500 hover:bg-white/5 transition group">
+                                <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                    <i class="ph ph-image text-2xl text-slate-400 group-hover:text-white mb-2"></i>
+                                    <p class="text-xs text-slate-500 group-hover:text-slate-300">Click to upload art</p>
+                                </div>
+                                <input type="file" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+                            </label>
+                            <p class="text-[10px] text-slate-600 mt-2 text-center">Images are compressed automatically.</p>
+                        </div>
                     </div>
                 </div>
 
-                <button onclick="savePass()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-600/20 mt-4 transition active:scale-95">
-                    Save to Wallet
+                <!-- Manual Code Entry (Conditional) -->
+                <div id="manual-entry-block" class="hidden pt-4 border-t border-white/10">
+                    <label class="text-xs font-semibold text-slate-400 ml-1 mb-2 block">MANUAL CODE</label>
+                    <input type="text" id="inp-manual-data" oninput="handleManualInput()" class="w-full input-glass rounded-xl p-4 text-sm font-mono mb-2" placeholder="Code Data">
+                    <select id="inp-manual-format" onchange="handleManualInput()" class="w-full input-glass rounded-xl p-4 text-sm bg-slate-900">
+                        <option value="CODE_128">Code 128 (Standard)</option>
+                        <option value="QR_CODE">QR Code</option>
+                        <option value="EAN_13">EAN 13 (Retail)</option>
+                        <option value="UPC">UPC</option>
+                    </select>
+                </div>
+
+                <div class="h-4"></div> <!-- Spacer -->
+
+                <button onclick="savePass()" class="w-full bg-white text-black font-bold text-base py-4 rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] transform active:scale-95 transition-all">
+                    Add to Wallet
                 </button>
             </div>
         </div>
     </div>
 
     <!-- ==================== PASS DETAIL VIEW ==================== -->
-    <div id="view-pass" class="view-section flex-col bg-slate-900 z-50">
-        <!-- Navbar -->
-        <div class="flex justify-between items-center p-6">
-            <button onclick="closePassView()" class="p-2 rounded-full bg-slate-800 text-white hover:bg-slate-700">
-                <i class="ph ph-x text-xl"></i>
+    <div id="view-pass" class="view-section flex-col bg-[#0a0a0c] z-50">
+        <!-- Detail Nav -->
+        <div class="flex justify-between items-center p-6 w-full max-w-md mx-auto">
+            <button onclick="navigate('view-home')" class="w-10 h-10 rounded-full glass-panel flex items-center justify-center text-white active:scale-90 transition">
+                <i class="ph ph-arrow-left"></i>
             </button>
             <div class="flex gap-3">
-                <button onclick="deleteCurrentPass()" class="p-2 rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/20">
-                    <i class="ph ph-trash text-xl"></i>
+                <button onclick="deletePass()" class="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-400 active:scale-90 transition">
+                    <i class="ph ph-trash"></i>
                 </button>
             </div>
         </div>
 
-        <!-- The Pass Content -->
-        <div class="flex-1 flex flex-col items-center justify-center p-6 w-full max-w-md mx-auto">
+        <div class="flex-1 flex flex-col items-center justify-start pt-4 px-6 w-full max-w-md mx-auto overflow-y-auto pb-10">
             
-            <!-- The Card -->
-            <div id="full-pass-card" class="w-full bg-gradient-to-br rounded-3xl p-6 shadow-2xl transform transition-all relative overflow-hidden">
-                
-                <!-- Shine effect -->
-                <div class="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
-
-                <!-- Card Header -->
-                <div class="flex items-start justify-between mb-8 relative z-10">
-                    <div>
-                        <h2 id="full-pass-title" class="text-2xl font-bold text-white drop-shadow-md break-words max-w-[200px]">Pass Name</h2>
-                        <p class="text-white/80 text-sm mt-1">Ready to scan</p>
+            <!-- Art Card (Top) -->
+            <div class="card-container w-full aspect-[1.58/1] mb-8">
+                <div id="detail-card-art" class="premium-card w-full h-full rounded-2xl p-6 flex flex-col justify-between shadow-2xl shadow-black/50">
+                    <div class="absolute inset-0 bg-black/20 z-0"></div>
+                    <div class="relative z-10 flex justify-between items-start">
+                        <div>
+                            <h2 id="detail-title" class="font-bold text-2xl text-white drop-shadow-md">Title</h2>
+                            <div id="detail-category" class="mt-1 inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-white/20 backdrop-blur-md">Cat</div>
+                        </div>
+                        <div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/10 shadow-lg">
+                            <i id="detail-icon" class="ph ph-ticket text-2xl text-white"></i>
+                        </div>
                     </div>
-                    <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm shadow-inner">
-                        <i id="full-pass-icon" class="ph ph-ticket text-2xl text-white"></i>
+                    <div class="relative z-10 opacity-70">
+                         <i class="ph ph-wave-sine text-3xl"></i>
                     </div>
-                </div>
-
-                <!-- Barcode Area (High Contrast) -->
-                <div class="bg-white rounded-xl p-4 shadow-lg flex flex-col items-center justify-center min-h-[220px] relative z-10">
-                    <div id="full-pass-code-container" class="w-full flex items-center justify-center overflow-hidden">
-                        <!-- Code injected here -->
-                    </div>
-                    <p id="full-pass-data-text" class="text-black font-mono text-sm mt-3 tracking-widest font-bold text-center break-all">12345678</p>
-                </div>
-
-                <!-- Bottom Decoration -->
-                <div class="mt-6 flex justify-center opacity-50 relative z-10">
-                     <i class="ph ph-infinity text-white text-2xl"></i>
                 </div>
             </div>
 
-            <!-- Helper Text -->
-            <div class="mt-10 text-center space-y-2">
-                <p class="text-slate-400 text-sm flex items-center justify-center gap-2">
-                    <i class="ph ph-sun-dim text-yellow-400"></i> Max brightness recommended
-                </p>
-                <p class="text-slate-600 text-xs">Tap code to copy text</p>
+            <!-- The Functional Code Block (Paper Style) -->
+            <div class="w-full bg-white text-black rounded-2xl p-6 shadow-[0_0_50px_rgba(255,255,255,0.1)] flex flex-col items-center animate-slide-up relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent"></div>
+                
+                <p class="text-[10px] text-slate-400 font-bold tracking-widest uppercase mb-4">Scan Code Below</p>
+                
+                <div id="detail-code-container" class="w-full flex items-center justify-center min-h-[120px] mix-blend-multiply">
+                    <!-- Canvas injected here -->
+                </div>
+                
+                <p id="detail-code-text" class="font-mono text-lg font-bold tracking-widest mt-4 text-slate-800 break-all text-center">...</p>
+                
+                <div class="w-full h-px bg-slate-100 my-6"></div>
+                
+                <div class="flex justify-between w-full text-slate-500 text-xs">
+                    <span>PassPocket Verified</span>
+                    <span id="detail-date">Added today</span>
+                </div>
+            </div>
+
+            <!-- Brightness Tip -->
+            <div class="mt-8 flex items-center gap-2 text-slate-500 text-xs bg-white/5 px-4 py-2 rounded-full">
+                <i class="ph ph-sun-dim text-yellow-500"></i>
+                <span>Brightness maximizes automatically</span>
             </div>
         </div>
     </div>
 
-    <!-- JavaScript Logic -->
+    <!-- ==================== SETTINGS VIEW ==================== -->
+    <div id="view-settings" class="view-section flex-col bg-[#050507] z-50">
+        <div class="p-6">
+            <div class="flex items-center gap-4 mb-8">
+                <button onclick="navigate('view-home')" class="p-2 -ml-2 rounded-full hover:bg-white/10 text-white">
+                    <i class="ph ph-arrow-left text-xl"></i>
+                </button>
+                <h2 class="text-xl font-bold">Settings</h2>
+            </div>
+
+            <div class="space-y-4">
+                <div class="glass-panel p-5 rounded-2xl">
+                    <h3 class="font-bold text-sm mb-1">Data Management</h3>
+                    <p class="text-xs text-slate-400 mb-4">All data is stored locally on your device.</p>
+                    <button onclick="exportData()" class="w-full py-3 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-medium mb-2 transition">Export Passes (JSON)</button>
+                    <button onclick="clearAllData()" class="w-full py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl text-xs font-medium transition">Delete All Data</button>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl flex items-center justify-between">
+                    <div>
+                        <h3 class="font-bold text-sm">Haptics</h3>
+                        <p class="text-xs text-slate-400">Vibrate on scan</p>
+                    </div>
+                    <div class="w-10 h-6 bg-indigo-600 rounded-full relative">
+                        <div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm"></div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-10">
+                    <p class="text-[10px] text-slate-600 uppercase tracking-widest">Version 2.0 Ultra</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logic -->
     <script>
-        // --- State Management ---
-        let passes = JSON.parse(localStorage.getItem('saved_passes_v2')) || [];
-        
-        // Temporary state during creation
-        let tempPassData = {
-            type: null, // 'QR_CODE', 'CODE_128', etc.
-            data: null
+        // --- State ---
+        let passes = JSON.parse(localStorage.getItem('passpocket_v2')) || [];
+        let tempPass = {
+            data: null,
+            format: 'CODE_128',
+            bg: 'linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%)', // Default gradient
+            bgType: 'gradient', // or 'image'
+            icon: 'ph-ticket',
+            category: 'General'
         };
-        let selectedColor = 'from-blue-600 to-cyan-500';
-        let selectedIcon = 'ph-ticket';
-        let html5QrcodeScanner = null;
         let activePassId = null;
+        let html5QrcodeScanner = null;
 
-        // --- Config Data ---
+        // --- Gradients Library ---
         const gradients = [
-            { class: 'from-blue-600 to-cyan-500', bg: 'bg-blue-500' },
-            { class: 'from-violet-600 to-purple-600', bg: 'bg-purple-600' },
-            { class: 'from-fuchsia-600 to-pink-600', bg: 'bg-pink-600' },
-            { class: 'from-orange-500 to-amber-500', bg: 'bg-orange-500' },
-            { class: 'from-emerald-600 to-teal-500', bg: 'bg-emerald-600' },
-            { class: 'from-slate-700 to-slate-800', bg: 'bg-slate-700' },
-            { class: 'from-red-600 to-rose-600', bg: 'bg-red-600' },
-            { class: 'from-indigo-900 to-slate-900', bg: 'bg-indigo-900' },
+            'linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%)', // Indigo Cyan
+            'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)', // Pink Purple
+            'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)', // Orange Red
+            'linear-gradient(135deg, #10b981 0%, #3b82f6 100%)', // Emerald Blue
+            'linear-gradient(135deg, #111827 0%, #374151 100%)', // Slate (Dark)
+            'linear-gradient(135deg, #be123c 0%, #db2777 100%)', // Rose
+            'linear-gradient(45deg, #000000 0%, #434343 74%)',   // Carbon
+            'linear-gradient(to right, #8e2de2, #4a00e0)',        // Electric Violet
+            'linear-gradient(to right, #00c6ff, #0072ff)',        // Sci-fi Blue
+            'linear-gradient(to right, #11998e, #38ef7d)'         // Nature
         ];
 
-        const icons = [
-            'ph-ticket', 'ph-airplane-tilt', 'ph-barbell', 'ph-coffee', 
-            'ph-shopping-cart', 'ph-qr-code', 'ph-bus', 'ph-film-strip', 
-            'ph-id-card', 'ph-book-open', 'ph-video-camera', 'ph-wifi-high'
-        ];
-
-        // --- Initialization ---
+        // --- Init ---
         document.addEventListener('DOMContentLoaded', () => {
             renderPassList();
-            setupEditorUI();
+            init3DEffect();
+            generateGradientPicker();
         });
 
         // --- Navigation ---
         function navigate(viewId) {
+            // Stop scanner if leaving scanner
+            if(html5QrcodeScanner && html5QrcodeScanner.isScanning) stopScanner();
+            
             document.querySelectorAll('.view-section').forEach(el => {
                 el.classList.remove('active');
-                setTimeout(() => {
-                    if(!el.classList.contains('active')) el.style.display = 'none';
-                }, 300);
+                setTimeout(() => { if(!el.classList.contains('active')) el.style.display = 'none'; }, 400);
             });
 
             const target = document.getElementById(viewId);
             target.style.display = 'flex';
-            // Force reflow
-            void target.offsetWidth;
+            void target.offsetWidth; // Reflow
             target.classList.add('active');
         }
 
-        // --- Scanner Logic (using html5-qrcode) ---
+        // --- 3D Tilt Effect Logic ---
+        function init3DEffect() {
+            document.addEventListener('mousemove', (e) => {
+                const cards = document.querySelectorAll('.premium-card');
+                cards.forEach(card => {
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    
+                    const centerX = rect.width / 2;
+                    const centerY = rect.height / 2;
+                    
+                    const rotateX = ((y - centerY) / centerY) * -10; // Max 10deg rotation
+                    const rotateY = ((x - centerX) / centerX) * 10;
+
+                    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+                });
+            });
+
+            // Mobile Device Orientation Support
+            window.addEventListener('deviceorientation', (e) => {
+                const cards = document.querySelectorAll('.premium-card');
+                cards.forEach(card => {
+                     // Simple tilt mapping
+                     const rotateX = (e.beta || 0) / 5; // Forward/Back
+                     const rotateY = (e.gamma || 0) / 5; // Left/Right
+                     card.style.transform = `perspective(1000px) rotateX(${-rotateX}deg) rotateY(${rotateY}deg)`;
+                });
+            });
+        }
+
+        // --- Editor: Visuals ---
+        function generateGradientPicker() {
+            const container = document.getElementById('art-gradient-panel');
+            container.innerHTML = gradients.map(g => `
+                <div onclick="selectGradient('${g}')" class="aspect-square rounded-full cursor-pointer hover:scale-110 transition border border-white/10" style="background: ${g}"></div>
+            `).join('');
+        }
+
+        function setArtMode(mode) {
+            const gradTab = document.getElementById('tab-gradient');
+            const upTab = document.getElementById('tab-upload');
+            const gradPanel = document.getElementById('art-gradient-panel');
+            const upPanel = document.getElementById('art-upload-panel');
+
+            if(mode === 'gradient') {
+                gradTab.className = "flex-1 py-2 rounded-lg bg-white/10 text-xs font-medium transition text-white";
+                upTab.className = "flex-1 py-2 rounded-lg bg-transparent text-slate-400 text-xs font-medium transition";
+                gradPanel.classList.remove('hidden');
+                upPanel.classList.add('hidden');
+                tempPass.bgType = 'gradient';
+            } else {
+                upTab.className = "flex-1 py-2 rounded-lg bg-white/10 text-xs font-medium transition text-white";
+                gradTab.className = "flex-1 py-2 rounded-lg bg-transparent text-slate-400 text-xs font-medium transition";
+                upPanel.classList.remove('hidden');
+                gradPanel.classList.add('hidden');
+                tempPass.bgType = 'image';
+            }
+        }
+
+        function selectGradient(css) {
+            tempPass.bg = css;
+            tempPass.bgType = 'gradient';
+            updateEditorPreview();
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    // Compress image
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        // Max width 600px
+                        const scale = 600 / img.width;
+                        canvas.width = 600;
+                        canvas.height = img.height * scale;
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        
+                        // Save as highish quality jpeg
+                        tempPass.bg = `url(${canvas.toDataURL('image/jpeg', 0.8)})`;
+                        tempPass.bgType = 'image';
+                        updateEditorPreview();
+                    };
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function updateEditorPreview() {
+            // Update State
+            tempPass.category = document.getElementById('inp-category').value;
+            tempPass.icon = document.getElementById('inp-icon').value;
+            const title = document.getElementById('inp-title').value || "Pass Name";
+
+            // Update DOM
+            const card = document.getElementById('editor-preview');
+            card.style.background = tempPass.bg;
+            card.style.backgroundSize = "cover";
+            card.style.backgroundPosition = "center";
+            
+            document.getElementById('prev-title').innerText = title;
+            document.getElementById('prev-category').innerText = tempPass.category;
+            document.getElementById('prev-icon').className = `ph ${tempPass.icon} text-xl text-white`;
+        }
+
+        // --- Scanning & Manual Input ---
         function startScanner() {
             navigate('view-scanner');
-            
-            // Initialize scanner if not exists
-            if (!html5QrcodeScanner) {
-                html5QrcodeScanner = new Html5Qrcode("reader");
-            }
-
-            const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
-            
-            html5QrcodeScanner.start(
-                { facingMode: "environment" }, 
-                config, 
-                onScanSuccess,
-                onScanFailure
-            ).catch(err => {
-                console.error("Error starting scanner", err);
-                alert("Camera permission denied or not available.");
-                navigate('view-home');
-            });
+            html5QrcodeScanner = new Html5Qrcode("reader");
+            html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
+                (decodedText, decodedResult) => {
+                    // Success
+                    if(navigator.vibrate) navigator.vibrate(200);
+                    let format = decodedResult.result.format?.formatName || 'CODE_128';
+                    if(format.includes('QR')) format = 'QR_CODE';
+                    stopScanner();
+                    prepareEditor(decodedText, format);
+                },
+                (err) => {} // Ignore frame errors
+            );
         }
 
         function stopScanner() {
-            if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
+            if(html5QrcodeScanner) {
                 html5QrcodeScanner.stop().then(() => {
-                    console.log("Scanner stopped");
-                    document.getElementById('reader').innerHTML = ""; // Cleanup
-                }).catch(err => console.error("Failed to stop scanner", err));
+                    document.getElementById('reader').innerHTML = "";
+                });
             }
-            navigate('view-home');
         }
 
-        function onScanSuccess(decodedText, decodedResult) {
-            // Success!
-            console.log(`Scan result: ${decodedText}`, decodedResult);
+        function prepareEditor(data, format, isManual=false) {
+            tempPass.data = data;
+            tempPass.format = format;
             
-            // Haptic feedback
-            if (navigator.vibrate) navigator.vibrate(200);
-
-            // Stop scanning
-            html5QrcodeScanner.stop().then(() => {
-                // Determine format
-                let format = decodedResult.result.format?.formatName || 'CODE_128'; 
-                // Map common names to what we use for generation
-                if (format.includes('QR')) format = 'QR_CODE';
-                
-                prepareEditor(decodedText, format);
-            }).catch(err => console.error(err));
-        }
-
-        function onScanFailure(error) {
-            // handle scan failure, usually better to ignore and keep scanning.
-            // console.warn(`Code scan error = ${error}`);
-        }
-
-        function toggleFlash() {
-             // Html5Qrcode doesn't support flash toggle easily on all devices yet, 
-             // but we can prepare the UI for it.
-             alert("Flash toggling depends on device support.");
-        }
-
-        // --- Manual Entry ---
-        function switchToManualEntry() {
-            if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
-                html5QrcodeScanner.stop();
+            // Reset fields
+            document.getElementById('inp-title').value = '';
+            document.getElementById('editor-data-display').innerText = data || "Waiting for input";
+            
+            // Handle Manual Mode UI
+            const manBlock = document.getElementById('manual-entry-block');
+            if(isManual) {
+                manBlock.classList.remove('hidden');
+                document.getElementById('inp-manual-data').value = '';
+                // Default gradient
+                selectGradient(gradients[0]);
+            } else {
+                manBlock.classList.add('hidden');
+                // Random default gradient for fun
+                const randGrad = gradients[Math.floor(Math.random() * gradients.length)];
+                selectGradient(randGrad);
             }
-            prepareEditor('', 'CODE_128', true);
+
+            navigate('view-editor');
+            updateEditorPreview();
         }
 
         function handleManualInput() {
-            const data = document.getElementById('manual-data').value;
-            const format = document.getElementById('manual-format').value;
-            tempPassData.data = data;
-            tempPassData.type = format;
-            document.getElementById('scanned-data-display').innerText = data || 'Waiting for input...';
-            renderCodePreview('code-preview-container', data, format);
+            tempPass.data = document.getElementById('inp-manual-data').value;
+            tempPass.format = document.getElementById('inp-manual-format').value;
+            document.getElementById('editor-data-display').innerText = tempPass.data;
         }
 
-        // --- Editor Logic ---
-        function prepareEditor(data, format, isManual = false) {
-            tempPassData = { data, type: format };
-            
-            navigate('view-editor');
-            
-            // Reset fields
-            document.getElementById('pass-title').value = '';
-            document.getElementById('scanned-data-display').innerText = data || "Manual Entry Mode";
-            
-            const manualDiv = document.getElementById('manual-entry-fields');
-            if (isManual) {
-                manualDiv.classList.remove('hidden');
-                document.getElementById('manual-data').value = '';
-            } else {
-                manualDiv.classList.add('hidden');
-            }
-
-            updatePreview();
-        }
-
-        function setupEditorUI() {
-            // Colors
-            const colorContainer = document.getElementById('color-picker');
-            colorContainer.innerHTML = gradients.map((c, i) => `
-                <div onclick="selectColor('${c.class}', this)" 
-                     class="w-10 h-10 rounded-full ${c.bg} cursor-pointer transition transform hover:scale-110 ${i===0 ? 'ring-2 ring-white scale-110' : ''}">
-                </div>
-            `).join('');
-
-            // Icons
-            const iconContainer = document.getElementById('icon-picker');
-            iconContainer.innerHTML = icons.map((i, idx) => `
-                <div onclick="selectIcon('${i}', this)" 
-                     class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center cursor-pointer border border-slate-700 hover:border-blue-500 transition shrink-0 ${idx===0 ? 'border-blue-500 bg-slate-700' : ''}">
-                    <i class="ph ${i} text-2xl text-white"></i>
-                </div>
-            `).join('');
-        }
-
-        function selectColor(gradientClass, el) {
-            selectedColor = gradientClass;
-            // Update UI selection
-            Array.from(document.getElementById('color-picker').children).forEach(c => c.classList.remove('ring-2', 'ring-white', 'scale-110'));
-            el.classList.add('ring-2', 'ring-white', 'scale-110');
-            updatePreview();
-        }
-
-        function selectIcon(iconClass, el) {
-            selectedIcon = iconClass;
-            // Update UI selection
-            Array.from(document.getElementById('icon-picker').children).forEach(c => {
-                c.classList.remove('border-blue-500', 'bg-slate-700');
-                c.classList.add('border-slate-700');
-            });
-            el.classList.remove('border-slate-700');
-            el.classList.add('border-blue-500', 'bg-slate-700');
-            updatePreview();
-        }
-
-        function updatePreview() {
-            const title = document.getElementById('pass-title').value || 'Pass Name';
-            const card = document.getElementById('editor-card-preview');
-            
-            // Apply gradient
-            card.className = `w-full aspect-[1.58/1] rounded-2xl p-6 relative shadow-xl transition-colors duration-300 flex flex-col justify-between mb-8 border border-white/10 bg-gradient-to-br ${selectedColor}`;
-            
-            document.getElementById('preview-title').innerText = title;
-            document.getElementById('preview-icon').className = `ph ${selectedIcon} text-xl text-white`;
-
-            // Render Code in Preview
-            if (tempPassData.data) {
-                renderCodePreview('code-preview-container', tempPassData.data, tempPassData.type);
-            }
-        }
-
-        function renderCodePreview(containerId, data, format) {
-            const container = document.getElementById(containerId);
-            container.innerHTML = ''; // Clear previous
-
-            if(!data) return;
-
-            try {
-                if (format === 'QR_CODE') {
-                    // Render QR
-                    const qrDiv = document.createElement('div');
-                    new QRCode(qrDiv, {
-                        text: data,
-                        width: 100,
-                        height: 100,
-                        colorDark : "#000000",
-                        colorLight : "#ffffff",
-                        correctLevel : QRCode.CorrectLevel.H
-                    });
-                    // Scale it down to fit container if needed
-                    qrDiv.style.transform = "scale(0.8)";
-                    container.appendChild(qrDiv);
-                } else {
-                    // Render Barcode
-                    const canvas = document.createElement('canvas');
-                    container.appendChild(canvas);
-                    JsBarcode(canvas, data, {
-                        format: (format === 'EAN_13' || format === 'UPC') ? format : "CODE128",
-                        width: 2,
-                        height: 50,
-                        displayValue: false,
-                        margin: 0,
-                        background: "#ffffff",
-                        lineColor: "#000000"
-                    });
-                    canvas.style.maxWidth = "100%";
-                    canvas.style.height = "100%";
-                    canvas.style.objectFit = "contain";
-                }
-            } catch (e) {
-                console.error("Rendering error", e);
-                container.innerHTML = '<span class="text-red-500 text-xs">Invalid Data</span>';
-            }
-        }
-
+        // --- Saving & Rendering ---
         function savePass() {
-            const title = document.getElementById('pass-title').value.trim() || 'Untitled Pass';
-            
-            if (!tempPassData.data) {
-                alert("No code data to save!");
-                return;
-            }
+            const title = document.getElementById('inp-title').value.trim() || 'Untitled Pass';
+            if(!tempPass.data) return alert("Please enter valid code data.");
 
             const newPass = {
                 id: Date.now(),
                 title: title,
-                data: tempPassData.data,
-                format: tempPassData.type,
-                color: selectedColor,
-                icon: selectedIcon,
+                ...tempPass,
                 date: new Date().toLocaleDateString()
             };
 
             passes.unshift(newPass);
-            localStorage.setItem('saved_passes_v2', JSON.stringify(passes));
+            localStorage.setItem('passpocket_v2', JSON.stringify(passes));
             renderPassList();
             navigate('view-home');
         }
 
-        // --- Render List ---
-        function renderPassList() {
+        function renderPassList(filter = 'all') {
             const grid = document.getElementById('pass-grid');
-            const emptyState = document.getElementById('empty-state');
-            
-            // Clear grid except empty state
+            const empty = document.getElementById('empty-state');
             grid.innerHTML = '';
-            grid.appendChild(emptyState);
 
-            if (passes.length === 0) {
-                emptyState.classList.remove('hidden');
-                emptyState.classList.add('flex');
+            const filtered = filter === 'all' ? passes : passes.filter(p => p.category === filter);
+
+            if(filtered.length === 0) {
+                empty.style.display = 'flex';
             } else {
-                emptyState.classList.add('hidden');
-                emptyState.classList.remove('flex');
-
-                passes.forEach(pass => {
+                empty.style.display = 'none';
+                filtered.forEach(pass => {
                     const el = document.createElement('div');
-                    el.className = `glass-panel pass-card rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-white/5 active:scale-95 transition`;
+                    // List Item Design
+                    el.className = 'glass-panel rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-white/5 transition-all group active:scale-95';
                     el.onclick = () => openPass(pass.id);
-                    
+
+                    // Mini preview of the art
                     el.innerHTML = `
-                        <div class="w-12 h-12 rounded-full bg-gradient-to-br ${pass.color} flex items-center justify-center shadow-lg shrink-0">
-                            <i class="ph ${pass.icon} text-white text-xl"></i>
+                        <div class="w-16 h-16 rounded-xl shadow-lg relative overflow-hidden shrink-0 border border-white/10">
+                            <div class="absolute inset-0" style="background: ${pass.bg}; background-size: cover; background-position: center;"></div>
+                            <div class="absolute inset-0 flex items-center justify-center bg-black/10">
+                                <i class="ph ${pass.icon} text-white text-xl drop-shadow-md"></i>
+                            </div>
                         </div>
                         <div class="flex-1 min-w-0">
-                            <h3 class="font-bold text-lg truncate">${pass.title}</h3>
-                            <p class="text-xs text-slate-400 font-mono truncate">${pass.data}</p>
+                            <div class="flex items-center gap-2 mb-1">
+                                <h3 class="font-bold text-white text-base truncate">${pass.title}</h3>
+                                <span class="px-1.5 py-0.5 rounded text-[10px] bg-white/10 text-slate-400 font-bold uppercase">${pass.category}</span>
+                            </div>
+                            <p class="text-xs text-slate-500 font-mono truncate">${pass.data}</p>
                         </div>
-                        <div class="bg-white/10 p-2 rounded-lg">
-                             <i class="ph ph-qr-code text-slate-300"></i>
+                        <div class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-slate-500 group-hover:text-white transition">
+                            <i class="ph ph-caret-right"></i>
                         </div>
                     `;
                     grid.appendChild(el);
@@ -670,89 +750,88 @@
             }
         }
 
-        // --- View Pass Logic ---
+        function filterPasses(cat) {
+            document.querySelectorAll('.filter-chip').forEach(btn => {
+                btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-lg');
+                btn.classList.add('bg-white/5', 'text-slate-400');
+                if((btn.innerText.includes(cat)) || (cat === 'all' && btn.innerText.includes('All'))) {
+                    btn.classList.remove('bg-white/5', 'text-slate-400');
+                    btn.classList.add('bg-indigo-600', 'text-white', 'shadow-lg');
+                }
+            });
+            renderPassList(cat);
+        }
+
+        // --- View Detail ---
         function openPass(id) {
             const pass = passes.find(p => p.id === id);
-            if (!pass) return;
-
+            if(!pass) return;
             activePassId = id;
-            
-            // Populate Full Screen Card
-            const card = document.getElementById('full-pass-card');
-            card.className = `w-full bg-gradient-to-br rounded-3xl p-6 shadow-2xl transform transition-all relative overflow-hidden ${pass.color}`;
-            
-            document.getElementById('full-pass-title').innerText = pass.title;
-            document.getElementById('full-pass-icon').className = `ph ${pass.icon} text-2xl text-white`;
-            document.getElementById('full-pass-data-text').innerText = pass.data;
 
-            // Render crisp code
-            const container = document.getElementById('full-pass-code-container');
+            // Render UI
+            document.getElementById('detail-title').innerText = pass.title;
+            document.getElementById('detail-category').innerText = pass.category;
+            document.getElementById('detail-icon').className = `ph ${pass.icon} text-2xl text-white`;
+            document.getElementById('detail-date').innerText = "Added " + pass.date;
+            document.getElementById('detail-code-text').innerText = pass.data;
+
+            // Render Art
+            const artCard = document.getElementById('detail-card-art');
+            artCard.style.background = pass.bg;
+            artCard.style.backgroundSize = "cover";
+            artCard.style.backgroundPosition = "center";
+
+            // Render Code
+            const container = document.getElementById('detail-code-container');
             container.innerHTML = '';
-            
-            if (pass.format === 'QR_CODE') {
-                const qrDiv = document.createElement('div');
-                new QRCode(qrDiv, {
-                    text: pass.data,
-                    width: 200,
-                    height: 200,
-                    colorDark : "#000000",
-                    colorLight : "#ffffff",
-                    correctLevel : QRCode.CorrectLevel.H
-                });
-                container.appendChild(qrDiv);
-            } else {
-                 const canvas = document.createElement('canvas');
-                 container.appendChild(canvas);
-                 try {
-                     JsBarcode(canvas, pass.data, {
-                        format: (pass.format === 'EAN_13' || pass.format === 'UPC') ? pass.format : "CODE128",
-                        width: 3,
-                        height: 100,
-                        displayValue: false,
-                        margin: 10,
-                        background: "#ffffff"
+
+            try {
+                if(pass.format === 'QR_CODE') {
+                    const qr = document.createElement('div');
+                    new QRCode(qr, { text: pass.data, width: 150, height: 150 });
+                    container.appendChild(qr);
+                } else {
+                    const canvas = document.createElement('canvas');
+                    container.appendChild(canvas);
+                    JsBarcode(canvas, pass.data, {
+                        format: (['EAN_13','UPC'].includes(pass.format)) ? pass.format : "CODE128",
+                        width: 2, height: 80, displayValue: false, margin: 0
                     });
+                    canvas.style.height = "80px";
                     canvas.style.maxWidth = "100%";
-                 } catch(e) {
-                     // Fallback for weird formats
-                     container.innerText = "Error rendering code";
-                 }
+                }
+            } catch(e) {
+                container.innerText = "Error rendering code";
             }
 
             navigate('view-pass');
         }
 
-        function closePassView() {
-            navigate('view-home');
-            activePassId = null;
-        }
-
-        function deleteCurrentPass() {
-            if (confirm('Delete this pass?')) {
+        function deletePass() {
+            if(confirm("Delete this pass?")) {
                 passes = passes.filter(p => p.id !== activePassId);
-                localStorage.setItem('saved_passes_v2', JSON.stringify(passes));
+                localStorage.setItem('passpocket_v2', JSON.stringify(passes));
                 renderPassList();
-                closePassView();
+                navigate('view-home');
             }
         }
 
-        function clearData() {
-            if(confirm("Delete ALL passes?")) {
-                localStorage.removeItem('saved_passes_v2');
-                passes = [];
-                renderPassList();
+        function clearAllData() {
+            if(confirm("Permanently delete ALL passes?")) {
+                localStorage.clear();
+                location.reload();
             }
         }
-
-        // Copy text on click
-        document.getElementById('full-pass-card').addEventListener('click', () => {
-             const pass = passes.find(p => p.id === activePassId);
-             if(pass) {
-                 navigator.clipboard.writeText(pass.data);
-                 alert("Code copied to clipboard!");
-             }
-        });
-
+        
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(passes));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "passpocket_backup.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
     </script>
 </body>
 </html>
