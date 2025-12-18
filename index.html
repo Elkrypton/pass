@@ -60,9 +60,7 @@
             transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* Standard Barcode aspect ratio */
         .flip-container.aspect-barcode { aspect-ratio: 1.58/1; }
-        /* QR Code aspect ratio (Square/Tall) */
         .flip-container.aspect-qr { aspect-ratio: 1/1.2; }
 
         .flipper {
@@ -96,7 +94,6 @@
             padding: 2rem;
         }
 
-        /* Interactions */
         .btn-press {
             transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -117,7 +114,6 @@
             transform: translateY(-2px);
         }
 
-        /* Bottom Nav */
         .bottom-nav {
             position: fixed;
             bottom: 24px;
@@ -150,6 +146,11 @@
             opacity: 0.08;
             mix-blend-mode: overlay;
             pointer-events: none;
+        }
+
+        /* Hide the native file input but keep it accessible */
+        #file-input {
+            display: none;
         }
     </style>
 </head>
@@ -187,7 +188,6 @@
         </nav>
 
         <div class="px-6 pb-20 space-y-10">
-            <!-- Dynamic Preview Card -->
             <div id="editor-flip-box" class="flip-container aspect-barcode" onclick="toggleFlip(this)">
                 <div class="flipper">
                     <div id="editor-card-front" class="card-front">
@@ -239,6 +239,9 @@
 
     <!-- SCANNER VIEW -->
     <div id="view-scanner" class="view-section flex-col z-[200] !bg-black !pb-0">
+        <!-- Hidden File Input -->
+        <input type="file" id="file-input" accept="image/*" onchange="handleFileUpload(event)">
+
         <div class="p-6 flex justify-between items-center relative z-20 pt-12">
             <button onclick="navigate('view-home')" class="w-12 h-12 rounded-full bg-white/10 backdrop-blur-lg text-white btn-press flex items-center justify-center">
                 <i class="ph-bold ph-x"></i>
@@ -248,17 +251,22 @@
         </div>
         
         <div class="flex-1 flex flex-col items-center justify-center relative">
-            <!-- Increased reliability for the container -->
             <div id="reader" style="width: 100%; height: 100%;"></div>
             <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
                 <div class="w-72 h-48 border-2 border-white/30 rounded-[2.5rem] relative overflow-hidden">
-                    <div class="absolute inset-0 border-4 border-white opacity-20 animate-pulse rounded-[2rem]"></div>
+                    <div id="scan-feedback" class="absolute inset-0 border-4 border-white opacity-20 animate-pulse rounded-[2rem]"></div>
                 </div>
             </div>
         </div>
         
-        <div class="p-10 flex justify-center pb-20">
-            <button onclick="prepareEditor('', 'CODE_128')" class="text-white/40 text-[10px] font-bold uppercase tracking-widest btn-press">Enter Manually</button>
+        <div class="p-10 flex flex-col items-center gap-6 pb-24">
+            <div class="flex gap-4">
+                <button onclick="document.getElementById('file-input').click()" class="bg-white/10 text-white text-[10px] font-bold uppercase tracking-widest px-6 py-3 rounded-full btn-press flex items-center gap-2">
+                    <i class="ph-bold ph-image"></i> Upload
+                </button>
+                <button onclick="prepareEditor('', 'CODE_128')" class="bg-white/5 text-white/40 text-[10px] font-bold uppercase tracking-widest px-6 py-3 rounded-full btn-press">Manual</button>
+            </div>
+            <p id="scan-status" class="text-white/40 text-[9px] font-bold uppercase tracking-widest h-4"></p>
         </div>
     </div>
 
@@ -307,7 +315,7 @@
         </button>
         <button onclick="navigate('view-home')" class="btn-press flex flex-col items-center gap-1 opacity-20">
             <i class="ph-fill ph-gear-six text-2xl"></i>
-            <span class="text-[8px] font-black uppercase_tracking-tighter">Settings</span>
+            <span class="text-[8px] font-black uppercase tracking-tighter">Settings</span>
         </button>
     </nav>
 
@@ -317,6 +325,7 @@
         let tempPass = { bg: '#4f46e5', data: '', format: 'CODE_128', category: 'Member', icon: 'ph-identification-card' };
         let activeId = null;
         let qrScanner = null;
+        let isProcessingScan = false;
 
         const themeColors = ['#4f46e5', '#000000', '#10b981', '#ef4444', '#f59e0b', '#7c3aed'];
 
@@ -333,7 +342,6 @@
             const nav = document.getElementById('main-nav');
             nav.style.display = (id === 'view-home') ? 'flex' : 'none';
             
-            // Reset flips
             document.querySelectorAll('.flip-container').forEach(c => c.classList.remove('flipped'));
             window.scrollTo(0,0);
             if (navigator.vibrate) navigator.vibrate(5);
@@ -367,7 +375,9 @@
 
         function startScanner() {
             navigate('view-scanner');
-            // Give the UI a moment to render the 'reader' div before starting
+            isProcessingScan = false;
+            document.getElementById('scan-status').innerText = "";
+            
             setTimeout(() => {
                 const formats = [
                     Html5QrcodeSupportedFormats.QR_CODE,
@@ -388,7 +398,7 @@
                 });
 
                 const config = { 
-                    fps: 15, 
+                    fps: 20, 
                     qrbox: (viewWidth, viewHeight) => {
                         return { width: viewWidth * 0.8, height: viewHeight * 0.5 };
                     },
@@ -399,7 +409,13 @@
                     { facingMode: "environment" },
                     config,
                     (text, result) => {
-                        // Success callback
+                        if (isProcessingScan) return;
+                        isProcessingScan = true;
+
+                        const feedback = document.getElementById('scan-feedback');
+                        feedback.classList.remove('opacity-20');
+                        feedback.classList.add('opacity-100', 'border-green-400');
+                        
                         if (navigator.vibrate) navigator.vibrate(40);
                         
                         let format = 'CODE_128';
@@ -407,28 +423,61 @@
                             format = result.result.format.formatName || 'CODE_128';
                         }
                         
-                        // Critical: Stop scanner immediately to prevent double-nav
-                        qrScanner.stop().then(() => {
-                            prepareEditor(text, format);
-                        }).catch(err => {
-                            console.warn("Stop error, moving to editor anyway");
-                            prepareEditor(text, format);
-                        });
+                        setTimeout(() => {
+                            qrScanner.stop().then(() => {
+                                prepareEditor(text, format);
+                            }).catch(() => {
+                                prepareEditor(text, format);
+                            });
+                        }, 600); 
                     },
-                    (errorMessage) => {
-                        // Errors are common during scanning (no code found in frame), ignore
-                    }
+                    () => {}
                 ).catch(err => {
                     console.error("Camera access error:", err);
-                    // On error, let the user enter manually
-                    prepareEditor('', 'CODE_128');
+                    document.getElementById('scan-status').innerText = "Camera Restricted";
                 });
             }, 400);
+        }
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const status = document.getElementById('scan-status');
+            status.innerText = "Analyzing image...";
+            
+            // Stop active camera scanner if running
+            if (qrScanner && qrScanner.isScanning) {
+                await qrScanner.stop();
+            }
+
+            // Temporarily use a static scanner or a one-time scanner for file
+            const fileScanner = new Html5Qrcode("reader");
+            
+            try {
+                const result = await fileScanner.scanFile(file, true);
+                if (navigator.vibrate) navigator.vibrate(60);
+                
+                // Success: Get text and format
+                // fileScanner result for scanFile doesn't return format in the same way, 
+                // but usually it's text. We'll attempt a guess or default to CODE_128
+                prepareEditor(result, 'CODE_128');
+            } catch (err) {
+                console.error("File scan error:", err);
+                status.innerText = "No code detected in photo";
+                // Restart camera if it was running before or just let user try again
+                setTimeout(() => { startScanner(); }, 2000);
+            }
         }
 
         function stopScanner() {
             if (qrScanner && qrScanner.isScanning) {
                 qrScanner.stop().catch(e => console.warn("Scanner stop failed:", e));
+            }
+            const feedback = document.getElementById('scan-feedback');
+            if (feedback) {
+                feedback.classList.add('opacity-20');
+                feedback.classList.remove('opacity-100', 'border-green-400');
             }
         }
 
@@ -444,7 +493,6 @@
             const title = document.getElementById('inp-title').value || "New Card";
             const container = document.getElementById('editor-flip-box');
             
-            // DYNAMIC ASPECT RATIO
             const isQR = tempPass.format.includes('QR') || tempPass.format.includes('DATA_MATRIX') || tempPass.format.includes('AZTEC');
             container.className = `flip-container ${isQR ? 'aspect-qr' : 'aspect-barcode'}`;
 
