@@ -446,27 +446,32 @@
             const status = document.getElementById('scan-status');
             status.innerText = "Analyzing image...";
             
-            // Stop active camera scanner if running
             if (qrScanner && qrScanner.isScanning) {
                 await qrScanner.stop();
             }
 
-            // Temporarily use a static scanner or a one-time scanner for file
             const fileScanner = new Html5Qrcode("reader");
             
             try {
-                const result = await fileScanner.scanFile(file, true);
+                // By providing verbose: true and handling the result properly, we can try to extract more data
+                const result = await fileScanner.scanFileV2(file, true);
                 if (navigator.vibrate) navigator.vibrate(60);
                 
-                // Success: Get text and format
-                // fileScanner result for scanFile doesn't return format in the same way, 
-                // but usually it's text. We'll attempt a guess or default to CODE_128
-                prepareEditor(result, 'CODE_128');
+                // Use the detected format from result.result.format.formatName
+                const detectedText = result.decodedText;
+                const detectedFormat = (result.result && result.result.format) ? result.result.format.formatName : 'CODE_128';
+                
+                prepareEditor(detectedText, detectedFormat);
             } catch (err) {
-                console.error("File scan error:", err);
-                status.innerText = "No code detected in photo";
-                // Restart camera if it was running before or just let user try again
-                setTimeout(() => { startScanner(); }, 2000);
+                // Fallback to scanFile if scanFileV2 isn't available or fails
+                try {
+                    const legacyResult = await fileScanner.scanFile(file, true);
+                    prepareEditor(legacyResult, 'CODE_128');
+                } catch (e) {
+                    console.error("File scan error:", e);
+                    status.innerText = "No code detected in photo";
+                    setTimeout(() => { startScanner(); }, 2000);
+                }
             }
         }
 
@@ -493,7 +498,12 @@
             const title = document.getElementById('inp-title').value || "New Card";
             const container = document.getElementById('editor-flip-box');
             
-            const isQR = tempPass.format.includes('QR') || tempPass.format.includes('DATA_MATRIX') || tempPass.format.includes('AZTEC');
+            // Strictly check format to keep QR as QR and Barcode as Barcode
+            const isQR = tempPass.format.includes('QR') || 
+                         tempPass.format.includes('DATA_MATRIX') || 
+                         tempPass.format.includes('AZTEC') || 
+                         tempPass.format.includes('PDF_417');
+
             container.className = `flip-container ${isQR ? 'aspect-qr' : 'aspect-barcode'}`;
 
             document.getElementById('editor-card-front').style.backgroundColor = tempPass.bg;
@@ -507,10 +517,16 @@
         }
 
         function renderCode(target, data, format, size) {
-            const isQR = format.includes('QR') || format.includes('DATA_MATRIX') || format.includes('AZTEC');
+            const isQR = format.includes('QR') || 
+                         format.includes('DATA_MATRIX') || 
+                         format.includes('AZTEC') || 
+                         format.includes('PDF_417');
+
             if (isQR) {
+                // Keep as QR/Matrix
                 new QRCode(target, { text: data, width: size, height: size, correctLevel: QRCode.CorrectLevel.H });
             } else {
+                // Keep as Barcode
                 const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
                 target.appendChild(svg);
                 try {
@@ -586,7 +602,11 @@
             const p = passes.find(x => x.id === id);
             const container = document.getElementById('detail-flip-box');
             
-            const isQR = p.format.includes('QR') || p.format.includes('DATA_MATRIX') || p.format.includes('AZTEC');
+            const isQR = p.format.includes('QR') || 
+                         p.format.includes('DATA_MATRIX') || 
+                         p.format.includes('AZTEC') || 
+                         p.format.includes('PDF_417');
+
             container.className = `flip-container ${isQR ? 'aspect-qr' : 'aspect-barcode'}`;
 
             document.getElementById('detail-card-front').style.backgroundColor = p.bg;
