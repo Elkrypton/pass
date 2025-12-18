@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#000000">
+    <meta name="theme-color" content="#ffffff">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>PassPocket Ultra v5.2</title>
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>PassPocket Ultra v5.3</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -18,52 +18,51 @@
 
     <style>
         :root {
-            --accent: #6366f1;
+            --accent: #4f46e5;
             --radius: 1.5rem;
-            --glass: rgba(30, 30, 35, 0.95);
-            --border: rgba(255, 255, 255, 0.1);
+            --bg-main: #ffffff;
+            --text-main: #000000;
+            --border: rgba(0, 0, 0, 0.08);
         }
 
         body {
-            background-color: #000000;
-            color: #ffffff;
+            background-color: var(--bg-main);
+            color: var(--text-main);
             font-family: 'Plus Jakarta Sans', sans-serif;
             -webkit-tap-highlight-color: transparent;
             min-height: 100vh;
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
-        }
-
-        .ambient-mesh {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
-            background: radial-gradient(circle at 0% 0%, #1e1b4b 0%, transparent 45%),
-                        radial-gradient(circle at 100% 100%, #312e81 0%, transparent 45%), #050505;
+            overflow: hidden; /* Prevent body scroll, let views handle it */
         }
 
         .view-section {
             display: none;
-            opacity: 0;
-            transition: opacity 0.3s ease, transform 0.3s ease;
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
             overflow-y: auto;
             z-index: 10;
-            padding-bottom: 100px;
-            padding-top: env(safe-area-inset-top); 
+            padding-bottom: 120px;
+            padding-top: env(safe-area-inset-top);
+            background: var(--bg-main);
+            -webkit-overflow-scrolling: touch;
         }
 
         .view-section.active {
             display: flex;
-            opacity: 1;
-            transform: scale(1);
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         /* Card Geometry */
         .flip-container {
             perspective: 2000px;
             width: 100%;
-            max-width: 420px; 
+            max-width: 400px; 
             aspect-ratio: 1.58/1;
             cursor: pointer;
             margin: 0 auto;
@@ -73,9 +72,9 @@
             position: relative;
             width: 100%;
             height: 100%;
-            transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1);
             transform-style: preserve-3d;
-            box-shadow: 0 20px 50px -10px rgba(0,0,0,0.5);
+            box-shadow: 0 15px 35px -5px rgba(0,0,0,0.1);
             border-radius: var(--radius);
         }
 
@@ -91,8 +90,7 @@
             -webkit-backface-visibility: hidden;
             border-radius: var(--radius);
             overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            background: #1a1a1a;
+            border: 1px solid rgba(0, 0, 0, 0.05);
         }
 
         .card-back {
@@ -107,7 +105,7 @@
 
         .noise-bg {
             background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3BaseFilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/feTurbulence%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-            opacity: 0.08;
+            opacity: 0.1;
             position: absolute;
             inset: 0;
             pointer-events: none;
@@ -115,39 +113,47 @@
         }
 
         .input-field {
-            background: #1a1a1a;
-            border: 1px solid #333;
-            border-radius: 1rem;
+            background: #f4f4f5;
+            border: 1px solid transparent;
+            border-radius: 1.25rem;
             padding: 1rem 1.25rem;
-            color: white;
+            color: #000;
             width: 100%;
             outline: none;
             font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .input-field:focus {
+            border-color: var(--accent);
         }
 
         .category-chip {
             padding: 0.6rem 1.2rem;
             border-radius: 99px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
+            background: #f4f4f5;
+            border: 1px solid transparent;
             font-size: 0.75rem;
             font-weight: 700;
             text-transform: uppercase;
             cursor: pointer;
+            color: #71717a;
+            white-space: nowrap;
         }
+
         .category-chip.active {
-            background: var(--accent);
+            background: #000;
             color: white;
-            border-color: var(--accent);
         }
 
         .scan-line {
             width: 100%;
             height: 2px;
-            background: #6366f1;
-            box-shadow: 0 0 20px #6366f1;
+            background: var(--accent);
+            box-shadow: 0 0 20px var(--accent);
             animation: scan 2s infinite linear;
         }
+
         @keyframes scan {
             0% { transform: translateY(0); opacity: 0; }
             50% { opacity: 1; }
@@ -156,44 +162,49 @@
 
         .bottom-nav {
             position: fixed;
-            bottom: 20px;
+            bottom: 24px;
             left: 50%;
             transform: translateX(-50%);
             width: 90%;
             max-width: 400px;
-            background: rgba(20, 20, 25, 0.9);
+            background: rgba(255, 255, 255, 0.9);
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 2rem;
-            padding: 0.8rem 1.5rem;
+            border: 1px solid rgba(0,0,0,0.05);
+            border-radius: 2.25rem;
+            padding: 0.75rem 1.25rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            z-index: 50;
+            z-index: 100;
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.1);
         }
         
         .nav-btn {
-            color: #666;
+            color: #a1a1aa;
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 4px;
+            flex: 1;
         }
-        .nav-btn.active { color: white; }
+        .nav-btn.active { color: #000; }
+        
         .nav-add {
-            background: var(--accent);
-            width: 50px;
-            height: 50px;
+            background: #000;
+            width: 54px;
+            height: 54px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            margin-top: -30px;
-            border: 4px solid #000;
+            margin-top: -35px;
+            border: 5px solid #fff;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
         }
+        .nav-add:active { transform: scale(0.9); }
 
-        /* Container for barcode to prevent overflow */
         .barcode-wrapper {
             width: 100%;
             display: flex;
@@ -205,35 +216,40 @@
             max-width: 100%;
             height: auto;
         }
+
+        .glass-panel {
+            background: #f9f9f9;
+            border: 1px solid #eeeeee;
+        }
+        
+        ::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body class="antialiased">
 
-    <div class="ambient-mesh"></div>
-
     <!-- HOME -->
     <div id="view-home" class="view-section active flex-col">
-        <header class="px-6 pt-6 pb-4">
-            <h1 class="text-2xl font-black tracking-tightest">POCKET<span class="text-indigo-500">ULTRA</span></h1>
-            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">My Wallet</p>
+        <header class="px-6 pt-8 pb-4">
+            <h1 class="text-2xl font-black tracking-tightest">POCKET<span class="text-indigo-600">ULTRA</span></h1>
+            <p class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">My Digital Wallet</p>
         </header>
 
-        <main class="px-6 pb-24">
-            <div id="pass-grid" class="grid grid-cols-1 gap-4"></div>
-            <div id="empty-state" class="hidden py-32 flex flex-col items-center justify-center text-center px-8 opacity-50">
-                <i class="ph-bold ph-cards text-3xl text-indigo-400 mb-4"></i>
-                <p class="text-xs font-black uppercase tracking-widest">No Passes Stored</p>
+        <main class="px-6">
+            <div id="pass-grid" class="grid grid-cols-1 gap-3"></div>
+            <div id="empty-state" class="hidden py-32 flex flex-col items-center justify-center text-center px-8 opacity-40">
+                <i class="ph-bold ph-cards text-4xl text-zinc-300 mb-4"></i>
+                <p class="text-xs font-black uppercase tracking-widest">Wallet is Empty</p>
             </div>
         </main>
     </div>
 
     <!-- SCANNER -->
-    <div id="view-scanner" class="view-section flex-col z-50 bg-black p-0 m-0 !pb-0">
+    <div id="view-scanner" class="view-section flex-col z-[110] bg-black p-0 m-0 !pb-0">
         <div class="absolute top-0 left-0 right-0 p-6 z-20 flex justify-between items-start pt-12">
-             <button onclick="navigate('view-home')" class="w-10 h-10 rounded-full bg-black/50 backdrop-blur text-white flex items-center justify-center border border-white/10">
+             <button onclick="navigate('view-home')" class="w-10 h-10 rounded-full bg-white/10 backdrop-blur text-white flex items-center justify-center">
                 <i class="ph-bold ph-x"></i>
             </button>
-             <label class="px-4 py-2 rounded-full bg-black/50 backdrop-blur text-xs font-bold border border-white/10 cursor-pointer flex items-center gap-2">
+             <label class="px-4 py-2 rounded-full bg-white/10 backdrop-blur text-xs font-bold text-white cursor-pointer flex items-center gap-2">
                 <i class="ph-bold ph-image"></i> Upload
                 <input type="file" accept="image/*" class="hidden" onchange="scanFromFile(event)">
             </label>
@@ -242,25 +258,25 @@
         <div class="flex-1 relative bg-black flex flex-col">
             <div id="reader" class="flex-1 w-full h-full object-cover"></div>
             <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
-                <div class="w-72 h-72 border-2 border-indigo-500/30 rounded-3xl relative overflow-hidden">
-                    <div class="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-indigo-500 rounded-tl-lg"></div>
-                    <div class="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-indigo-500 rounded-tr-lg"></div>
-                    <div class="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-indigo-500 rounded-bl-lg"></div>
-                    <div class="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-indigo-500 rounded-br-lg"></div>
+                <div class="w-72 h-72 border-2 border-white/20 rounded-3xl relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-white rounded-tl-lg"></div>
+                    <div class="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-white rounded-tr-lg"></div>
+                    <div class="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-white rounded-bl-lg"></div>
+                    <div class="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-white rounded-br-lg"></div>
                     <div class="scan-line"></div>
                 </div>
             </div>
         </div>
         <div class="p-8 bg-black flex justify-center pb-12">
-             <button onclick="prepareEditor('', 'CODE_128')" class="text-slate-400 text-xs font-bold uppercase tracking-widest">Manual Entry</button>
+             <button onclick="prepareEditor('', 'CODE_128')" class="text-zinc-500 text-xs font-bold uppercase tracking-widest">Manual Entry</button>
         </div>
     </div>
 
     <!-- EDITOR -->
-    <div id="view-editor" class="view-section flex-col bg-[#050505] !pb-0">
-        <header class="px-6 py-4 flex items-center gap-4 bg-[#050505] sticky top-0 z-20">
-            <button onclick="navigate('view-home')" class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white"><i class="ph-bold ph-caret-left"></i></button>
-            <h2 class="text-sm font-black uppercase tracking-widest">Setup Pass</h2>
+    <div id="view-editor" class="view-section flex-col !pb-0">
+        <header class="px-6 py-4 flex items-center gap-4 sticky top-0 z-20 bg-white">
+            <button onclick="navigate('view-home')" class="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-black"><i class="ph-bold ph-caret-left"></i></button>
+            <h2 class="text-sm font-black uppercase tracking-widest">Configure Pass</h2>
         </header>
 
         <div class="px-6 pb-32 space-y-8">
@@ -270,44 +286,62 @@
                         <div class="noise-bg"></div>
                         <div class="relative z-10 p-6 h-full flex flex-col justify-between">
                             <div class="flex justify-between items-start">
-                                <h3 id="prev-title" class="text-2xl font-black text-white leading-tight">Name</h3>
-                                <div id="prev-icon-container" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/10">
-                                    <i id="prev-icon" class="ph ph-ticket text-xl"></i>
+                                <h3 id="prev-title" class="text-2xl font-black text-white leading-tight">Card Name</h3>
+                                <div id="prev-icon-container" class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center border border-white/10">
+                                    <i id="prev-icon" class="ph ph-ticket text-xl text-white"></i>
                                 </div>
                             </div>
-                            <p id="prev-cat" class="text-[10px] font-black uppercase opacity-60 tracking-widest">General</p>
+                            <p id="prev-cat" class="text-[10px] font-black uppercase text-white/70 tracking-widest">General</p>
                         </div>
                     </div>
                     <div class="card-back">
                         <div id="editor-barcode-preview" class="barcode-wrapper"></div>
-                        <p id="prev-format-tag" class="text-[8px] font-bold text-slate-400 mt-4 uppercase"></p>
+                        <p id="prev-format-tag" class="text-[8px] font-bold text-zinc-400 mt-4 uppercase"></p>
                     </div>
                 </div>
             </div>
 
-            <div class="space-y-6">
-                <input type="text" id="inp-title" oninput="updatePreview()" class="input-field" placeholder="Store or Card Name">
-                <div class="flex gap-2 overflow-x-auto no-scrollbar" id="editor-categories">
-                    <button onclick="selectCategory('General', 'ph-ticket')" class="category-chip active">General</button>
-                    <button onclick="selectCategory('Travel', 'ph-airplane-tilt')" class="category-chip">Travel</button>
-                    <button onclick="selectCategory('Gym', 'ph-barbell')" class="category-chip">Gym</button>
-                    <button onclick="selectCategory('Store', 'ph-shopping-bag')" class="category-chip">Store</button>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-[10px] font-bold uppercase text-zinc-400 ml-2 mb-2 block">Identity</label>
+                    <input type="text" id="inp-title" oninput="updatePreview()" class="input-field" placeholder="Store or Gym Name">
                 </div>
-                <div class="flex gap-3 overflow-x-auto no-scrollbar py-2" id="color-palette"></div>
-                <input type="text" id="inp-manual-data" oninput="updatePreview()" class="input-field font-mono text-xs" placeholder="Scanned Data">
-                <button onclick="savePass()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest">Save Pass</button>
+
+                <div>
+                    <label class="text-[10px] font-bold uppercase text-zinc-400 ml-2 mb-2 block">Type</label>
+                    <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1" id="editor-categories">
+                        <button onclick="selectCategory('General', 'ph-ticket')" class="category-chip active">General</button>
+                        <button onclick="selectCategory('Travel', 'ph-airplane-tilt')" class="category-chip">Travel</button>
+                        <button onclick="selectCategory('Gym', 'ph-barbell')" class="category-chip">Gym</button>
+                        <button onclick="selectCategory('Store', 'ph-shopping-bag')" class="category-chip">Store</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-[10px] font-bold uppercase text-zinc-400 ml-2 mb-2 block">Theme</label>
+                    <div class="flex gap-3 overflow-x-auto no-scrollbar py-1" id="color-palette"></div>
+                </div>
+
+                <div>
+                    <label class="text-[10px] font-bold uppercase text-zinc-400 ml-2 mb-2 block">Scanned Data</label>
+                    <input type="text" id="inp-manual-data" oninput="updatePreview()" class="input-field font-mono text-xs" placeholder="0000000000">
+                </div>
+
+                <div class="pt-4">
+                    <button onclick="savePass()" class="w-full bg-black text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-transform">Save to Wallet</button>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- DETAIL -->
-    <div id="view-pass" class="view-section flex-col bg-[#050505] !pb-0">
-        <header class="p-6 flex justify-between items-center bg-[#050505] sticky top-0 z-10">
-            <button onclick="navigate('view-home')" class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white"><i class="ph-bold ph-caret-left"></i></button>
-            <button onclick="deletePass()" class="text-red-500 text-xs font-bold uppercase">Delete</button>
+    <div id="view-pass" class="view-section flex-col !pb-0">
+        <header class="p-6 flex justify-between items-center sticky top-0 z-10 bg-white">
+            <button onclick="navigate('view-home')" class="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-black"><i class="ph-bold ph-caret-left"></i></button>
+            <button onclick="deletePass()" class="text-red-500 text-xs font-bold uppercase tracking-widest">Remove</button>
         </header>
 
-        <div class="px-6 flex flex-col items-center pt-8 flex-1">
+        <div class="px-6 flex flex-col items-center pt-4 flex-1">
             <div class="flip-container mb-12" id="detail-flip-box" onclick="toggleFlip(this)">
                 <div class="flipper">
                     <div id="detail-card-front" class="card-front">
@@ -315,24 +349,24 @@
                         <div class="relative z-10 p-8 h-full flex flex-col justify-between">
                             <h2 id="detail-title" class="text-3xl font-black text-white tracking-tight"></h2>
                             <div class="flex justify-between items-end">
-                                <div id="detail-logo" class="w-12 h-12 rounded-2xl flex items-center justify-center bg-white/10 border border-white/20"></div>
-                                <p id="detail-cat" class="text-[10px] font-black uppercase opacity-60 tracking-widest"></p>
+                                <div id="detail-logo" class="w-12 h-12 rounded-2xl flex items-center justify-center bg-white/20 border border-white/20"></div>
+                                <p id="detail-cat" class="text-[10px] font-black uppercase text-white/70 tracking-widest"></p>
                             </div>
                         </div>
                     </div>
                     <div class="card-back">
                         <div id="detail-barcode" class="barcode-wrapper mb-4"></div>
-                        <p id="detail-data" class="font-mono text-[10px] font-bold tracking-tight text-slate-800 break-all text-center"></p>
+                        <p id="detail-data" class="font-mono text-[10px] font-bold tracking-tight text-zinc-800 break-all text-center"></p>
                     </div>
                 </div>
             </div>
-            <p class="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 animate-pulse">Tap to Reveal Code</p>
+            <p class="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 animate-pulse">Tap Card to Flip</p>
         </div>
     </div>
 
     <!-- NAV -->
-    <nav class="bottom-nav">
-        <button onclick="navigate('view-home')" class="nav-btn active" id="nav-home">
+    <nav class="bottom-nav" id="main-nav">
+        <button onclick="navigate('view-home')" class="nav-btn active" id="nav-btn-home">
             <i class="ph-fill ph-house text-2xl"></i>
             <span class="text-[8px] font-bold uppercase">Home</span>
         </button>
@@ -340,41 +374,71 @@
             <i class="ph-bold ph-plus text-xl"></i>
         </button>
         <button onclick="navigate('view-home')" class="nav-btn">
-            <i class="ph-fill ph-gear text-2xl"></i>
+            <i class="ph-fill ph-gear-six text-2xl"></i>
             <span class="text-[8px] font-bold uppercase">Settings</span>
         </button>
     </nav>
 
     <script>
-        const STORAGE_KEY = 'passpocket_v5_pro';
+        const STORAGE_KEY = 'passpocket_v5_ultra_white';
         let passes = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         let tempPass = { bg: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', data: '', format: 'CODE_128', category: 'General', icon: 'ph-ticket' };
         let activePassId = null;
         let html5QrScanner = null;
 
-        const colors = ['linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 'linear-gradient(135deg, #ef4444 0%, #991b1b 100%)', 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)', '#000000', '#18181b'];
+        const colors = [
+            'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', 
+            'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
+            'linear-gradient(135deg, #ef4444 0%, #991b1b 100%)', 
+            'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)', 
+            '#000000', 
+            '#475569'
+        ];
 
         document.addEventListener('DOMContentLoaded', () => {
             renderPassList();
             renderColorPalette();
+            // Fast click handling
+            document.addEventListener('click', () => {}, false);
         });
 
         function navigate(id) {
             if (id !== 'view-scanner') stopScanner();
-            document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
-            const target = document.getElementById(id);
-            if(target) target.classList.add('active');
+            
+            // UI responsiveness: immediate hide others
+            const views = document.querySelectorAll('.view-section');
+            views.forEach(v => {
+                if (v.id === id) {
+                    v.classList.add('active');
+                } else {
+                    v.classList.remove('active');
+                }
+            });
+
+            // Handle Nav active state
+            const nav = document.getElementById('main-nav');
+            if (id === 'view-scanner' || id === 'view-editor') {
+                nav.style.display = 'none';
+            } else {
+                nav.style.display = 'flex';
+            }
+
             document.querySelectorAll('.flip-container').forEach(c => c.classList.remove('flipped'));
+            window.scrollTo(0, 0);
         }
 
-        function toggleFlip(el) { el.classList.toggle('flipped'); if (navigator.vibrate) navigator.vibrate(10); }
+        function toggleFlip(el) { el.classList.toggle('flipped'); if (navigator.vibrate) navigator.vibrate(5); }
 
         function renderColorPalette() {
             const p = document.getElementById('color-palette');
-            p.innerHTML = colors.map(c => `<div onclick="setBg('${c}')" class="w-10 h-10 rounded-full shrink-0 border-2 border-white/10 cursor-pointer" style="background:${c}"></div>`).join('');
+            p.innerHTML = colors.map(c => `<div onclick="setBg('${c}')" class="w-9 h-9 rounded-full shrink-0 border-2 border-white cursor-pointer shadow-sm" style="background:${c}"></div>`).join('');
         }
 
-        function setBg(c) { tempPass.bg = c; updatePreview(); }
+        function setBg(c) { 
+            tempPass.bg = c; 
+            updatePreview(); 
+            if (navigator.vibrate) navigator.vibrate(5);
+        }
 
         function selectCategory(cat, icon) {
             tempPass.category = cat; tempPass.icon = icon;
@@ -386,32 +450,54 @@
 
         function startScanner() {
             navigate('view-scanner');
-            const config = { fps: 20, qrbox: { width: 280, height: 280 } };
+            const config = { fps: 24, qrbox: { width: 250, height: 250 } };
+            
+            // Delay scanner init slightly to allow view transition to finish
             setTimeout(() => {
+                if (html5QrScanner) {
+                    html5QrScanner.clear();
+                    html5QrScanner = null;
+                }
                 html5QrScanner = new Html5Qrcode("reader");
                 html5QrScanner.start({ facingMode: "environment" }, config,
                     (decodedText, result) => {
                         const format = result.result.format?.formatName || 'CODE_128';
                         if(navigator.vibrate) navigator.vibrate(50);
-                        html5QrScanner.stop().then(() => { html5QrScanner.clear(); html5QrScanner = null; prepareEditor(decodedText, format); });
+                        html5QrScanner.stop().then(() => { 
+                            html5QrScanner.clear(); 
+                            html5QrScanner = null; 
+                            prepareEditor(decodedText, format); 
+                        });
                     }
-                ).catch(() => alert("Camera error"));
-            }, 500);
+                ).catch(err => {
+                    console.error(err);
+                    alert("Camera blocked or unavailable");
+                    navigate('view-home');
+                });
+            }, 300);
         }
 
-        function stopScanner() { if (html5QrScanner) { html5QrScanner.stop().then(() => { html5QrScanner.clear(); html5QrScanner = null; }).catch(() => {}); } }
+        function stopScanner() { 
+            if (html5QrScanner) { 
+                html5QrScanner.stop().then(() => { 
+                    html5QrScanner.clear(); 
+                    html5QrScanner = null; 
+                }).catch(() => {}); 
+            } 
+        }
 
         function scanFromFile(event) {
             const file = event.target.files[0];
             if (!file) return;
             const scanner = new Html5Qrcode("reader");
-            scanner.scanFile(file, true).then(txt => prepareEditor(txt, 'QR_CODE')).catch(() => alert("No code found"));
+            scanner.scanFile(file, true).then(txt => prepareEditor(txt, 'QR_CODE')).catch(() => alert("No code detected in image"));
         }
 
         function prepareEditor(data, format) {
             tempPass.data = data;
             tempPass.format = format;
             document.getElementById('inp-manual-data').value = data;
+            document.getElementById('inp-title').value = '';
             navigate('view-editor');
             updatePreview();
         }
@@ -423,22 +509,20 @@
             cardFront.style.background = tempPass.bg;
             document.getElementById('prev-title').innerText = title;
             document.getElementById('prev-cat').innerText = tempPass.category;
-            document.getElementById('prev-icon').className = `ph ${tempPass.icon} text-xl`;
+            document.getElementById('prev-icon').className = `ph ${tempPass.icon} text-xl text-white`;
             document.getElementById('prev-format-tag').innerText = tempPass.format.replace(/_/g, ' ');
 
             const bc = document.getElementById('editor-barcode-preview');
             bc.innerHTML = '';
-            if (data) renderSpecificCode(bc, data, tempPass.format, 180);
+            if (data) renderSpecificCode(bc, data, tempPass.format, 160);
         }
 
         function renderSpecificCode(container, data, format, size) {
-            // Strict Format Mapping: No converting barcode to QR
             const isQR = format.includes('QR') || format.includes('AZTEC') || format.includes('DATA_MATRIX');
             
             if (isQR) {
                 new QRCode(container, { text: data, width: size, height: size, correctLevel: QRCode.CorrectLevel.M });
             } else {
-                // Determine barcode type based on library availability
                 let type = "CODE128";
                 if(format === "EAN_13") type = "EAN13";
                 if(format === "EAN_8") type = "EAN8";
@@ -450,33 +534,55 @@
                 container.appendChild(svg);
                 
                 try {
-                    // Dynamic scaling for long barcodes
                     const barWidth = data.length > 20 ? 1 : (data.length > 13 ? 1.5 : 2);
                     JsBarcode(svg, data, {
                         format: type,
                         width: barWidth,
-                        height: 80,
+                        height: 70,
                         displayValue: false,
                         margin: 0,
                         background: "transparent"
                     });
                 } catch (e) {
-                    // Fallback to generic CODE128 if specific type fails, but KEEP IT A BARCODE
                     try {
-                        JsBarcode(svg, data, { format: "CODE128", width: 1, height: 80, displayValue: false });
+                        JsBarcode(svg, data, { format: "CODE128", width: 1, height: 70, displayValue: false });
                     } catch(err) {
-                        container.innerHTML = `<p class="text-[10px] text-red-500 font-bold">Unsupported Barcode Data</p>`;
+                        container.innerHTML = `<p class="text-[10px] text-red-500 font-bold">Unsupported Barcode</p>`;
                     }
                 }
             }
         }
 
         function savePass() {
-            const title = document.getElementById('inp-title').value || "Card";
-            const data = document.getElementById('inp-manual-data').value;
-            if (!data) return;
-            passes.unshift({ id: Date.now(), title, category: tempPass.category, icon: tempPass.icon, data, format: tempPass.format, bg: tempPass.bg });
+            const titleInput = document.getElementById('inp-title');
+            const dataInput = document.getElementById('inp-manual-data');
+            
+            const title = titleInput.value.trim() || "Pass";
+            const data = dataInput.value.trim();
+            
+            if (!data) {
+                dataInput.classList.add('border-red-500');
+                setTimeout(() => dataInput.classList.remove('border-red-500'), 1000);
+                return;
+            }
+
+            // Save immediately
+            const newPass = { 
+                id: Date.now(), 
+                title, 
+                category: tempPass.category, 
+                icon: tempPass.icon, 
+                data, 
+                format: tempPass.format, 
+                bg: tempPass.bg 
+            };
+            
+            passes.unshift(newPass);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(passes));
+            
+            if (navigator.vibrate) navigator.vibrate([30, 30]);
+            
+            // Refresh UI and go home
             renderPassList();
             navigate('view-home');
         }
@@ -484,20 +590,27 @@
         function renderPassList() {
             const grid = document.getElementById('pass-grid');
             grid.innerHTML = '';
-            document.getElementById('empty-state').style.display = passes.length ? 'none' : 'flex';
+            const empty = document.getElementById('empty-state');
+            
+            if (passes.length === 0) {
+                empty.classList.remove('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+
             passes.forEach(p => {
                 const div = document.createElement('div');
-                div.className = "p-4 glass-panel rounded-3xl flex items-center gap-4 active:scale-95 transition-all cursor-pointer";
+                div.className = "p-4 glass-panel rounded-3xl flex items-center gap-4 active:scale-[0.98] transition-all cursor-pointer";
                 div.onclick = () => openPass(p.id);
                 div.innerHTML = `
-                    <div class="w-12 h-12 rounded-2xl shrink-0 shadow-lg" style="background:${p.bg}; background-size:cover; display:flex; align-items:center; justify-content:center;">
+                    <div class="w-11 h-11 rounded-2xl shrink-0 flex items-center justify-center shadow-inner" style="background:${p.bg}">
                         <i class="ph-fill ${p.icon} text-lg text-white"></i>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <h4 class="font-bold text-sm truncate text-white">${p.title}</h4>
-                        <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">${p.category}</span>
+                        <h4 class="font-bold text-sm truncate text-black">${p.title}</h4>
+                        <span class="text-[9px] font-black text-zinc-400 uppercase tracking-widest">${p.category}</span>
                     </div>
-                    <i class="ph-bold ph-caret-right text-slate-700"></i>
+                    <i class="ph-bold ph-caret-right text-zinc-300"></i>
                 `;
                 grid.appendChild(div);
             });
@@ -506,19 +619,22 @@
         function openPass(id) {
             activePassId = id;
             const p = passes.find(x => x.id === id);
+            if (!p) return;
+
             document.getElementById('detail-card-front').style.background = p.bg;
             document.getElementById('detail-title').innerText = p.title;
             document.getElementById('detail-cat').innerText = p.category;
             document.getElementById('detail-data').innerText = p.data;
             document.getElementById('detail-logo').innerHTML = `<i class="ph-fill ${p.icon} text-2xl text-white"></i>`;
+            
             const bc = document.getElementById('detail-barcode');
             bc.innerHTML = '';
-            renderSpecificCode(bc, p.data, p.format, 280);
+            renderSpecificCode(bc, p.data, p.format, 240);
             navigate('view-pass');
         }
 
         function deletePass() {
-            if (confirm("Delete this pass?")) {
+            if (confirm("Permanently delete this pass?")) {
                 passes = passes.filter(x => x.id !== activePassId);
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(passes));
                 renderPassList();
