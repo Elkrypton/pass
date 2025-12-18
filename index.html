@@ -248,7 +248,8 @@
         </div>
         
         <div class="flex-1 flex flex-col items-center justify-center relative">
-            <div id="reader" class="w-full h-full"></div>
+            <!-- Increased reliability for the container -->
+            <div id="reader" style="width: 100%; height: 100%;"></div>
             <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
                 <div class="w-72 h-48 border-2 border-white/30 rounded-[2.5rem] relative overflow-hidden">
                     <div class="absolute inset-0 border-4 border-white opacity-20 animate-pulse rounded-[2rem]"></div>
@@ -306,7 +307,7 @@
         </button>
         <button onclick="navigate('view-home')" class="btn-press flex flex-col items-center gap-1 opacity-20">
             <i class="ph-fill ph-gear-six text-2xl"></i>
-            <span class="text-[8px] font-black uppercase tracking-tighter">Settings</span>
+            <span class="text-[8px] font-black uppercase_tracking-tighter">Settings</span>
         </button>
     </nav>
 
@@ -366,56 +367,68 @@
 
         function startScanner() {
             navigate('view-scanner');
+            // Give the UI a moment to render the 'reader' div before starting
             setTimeout(() => {
-                qrScanner = new Html5Qrcode("reader");
+                const formats = [
+                    Html5QrcodeSupportedFormats.QR_CODE,
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.CODE_39,
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.EAN_8,
+                    Html5QrcodeSupportedFormats.UPC_A,
+                    Html5QrcodeSupportedFormats.UPC_E,
+                    Html5QrcodeSupportedFormats.DATA_MATRIX,
+                    Html5QrcodeSupportedFormats.AZTEC,
+                    Html5QrcodeSupportedFormats.PDF_417
+                ];
+
+                qrScanner = new Html5Qrcode("reader", { 
+                    verbose: false,
+                    formatsToSupport: formats
+                });
+
                 const config = { 
-                    fps: 20, 
+                    fps: 15, 
                     qrbox: (viewWidth, viewHeight) => {
-                        // Dynamic box for both QR and wide Barcodes
-                        return { width: viewWidth * 0.8, height: viewHeight * 0.4 };
+                        return { width: viewWidth * 0.8, height: viewHeight * 0.5 };
                     },
-                    aspectRatio: 1.0,
-                    formatsToSupport: [ 
-                        Html5QrcodeSupportedFormats.QR_CODE,
-                        Html5QrcodeSupportedFormats.CODE_128,
-                        Html5QrcodeSupportedFormats.CODE_39,
-                        Html5QrcodeSupportedFormats.EAN_13,
-                        Html5QrcodeSupportedFormats.EAN_8,
-                        Html5QrcodeSupportedFormats.UPC_A,
-                        Html5QrcodeSupportedFormats.UPC_E,
-                        Html5QrcodeSupportedFormats.DATA_MATRIX,
-                        Html5QrcodeSupportedFormats.AZTEC,
-                        Html5QrcodeSupportedFormats.PDF_417
-                    ]
+                    aspectRatio: 1.0
                 };
 
                 qrScanner.start(
                     { facingMode: "environment" },
                     config,
                     (text, result) => {
-                        // Map numerical or missing format names to strings
+                        // Success callback
+                        if (navigator.vibrate) navigator.vibrate(40);
+                        
                         let format = 'CODE_128';
                         if (result && result.result && result.result.format) {
                             format = result.result.format.formatName || 'CODE_128';
                         }
                         
-                        if (navigator.vibrate) navigator.vibrate(50);
-                        qrScanner.stop().then(() => prepareEditor(text, format)).catch(() => prepareEditor(text, format));
+                        // Critical: Stop scanner immediately to prevent double-nav
+                        qrScanner.stop().then(() => {
+                            prepareEditor(text, format);
+                        }).catch(err => {
+                            console.warn("Stop error, moving to editor anyway");
+                            prepareEditor(text, format);
+                        });
                     },
-                    (error) => {
-                        // Silent fail for frame-by-frame scanning errors
+                    (errorMessage) => {
+                        // Errors are common during scanning (no code found in frame), ignore
                     }
-                ).catch(e => {
-                    console.error("Scanner error:", e);
-                    navigate('view-home');
+                ).catch(err => {
+                    console.error("Camera access error:", err);
+                    // On error, let the user enter manually
+                    prepareEditor('', 'CODE_128');
                 });
-            }, 300);
+            }, 400);
         }
 
         function stopScanner() {
-            if (qrScanner) {
-                qrScanner.stop().catch(() => {});
-                qrScanner = null;
+            if (qrScanner && qrScanner.isScanning) {
+                qrScanner.stop().catch(e => console.warn("Scanner stop failed:", e));
             }
         }
 
@@ -453,7 +466,6 @@
                 const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
                 target.appendChild(svg);
                 try {
-                    // Strip non-standard characters from format name for JsBarcode
                     const cleanFormat = format.replace(/_/g, '').replace(/CODE/g, 'CODE');
                     JsBarcode(svg, data, {
                         format: cleanFormat,
@@ -463,7 +475,6 @@
                         margin: 0
                     });
                 } catch (e) {
-                    // Fallback to CODE128 if specific format fails
                     JsBarcode(svg, data, { format: "CODE128", width: 2, height: 80, displayValue: false });
                 }
             }
@@ -475,7 +486,6 @@
             
             if (!tempPass.data) return;
 
-            // Visual feedback
             btn.innerText = "SAVING...";
             btn.style.opacity = "0.5";
 
