@@ -1,0 +1,9 @@
+{
+  "name": "Local Digital Wallet",
+  "short_name": "Digital Wallet",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#fff0f9",
+  "theme_color": "#ff66b3",
+
+}
