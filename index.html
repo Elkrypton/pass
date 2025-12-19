@@ -287,6 +287,12 @@
                 <div class="space-y-2">
                     <label class="text-[10px] font-bold uppercase text-zinc-400 px-1">Aesthetics</label>
                     <div class="flex gap-4 overflow-x-auto no-scrollbar py-2" id="color-palette"></div>
+                    
+                    <label class="mt-2 w-full py-3 rounded-2xl border border-dashed border-zinc-300 flex items-center justify-center gap-2 cursor-pointer hover:bg-zinc-50 transition active:scale-95 group">
+                        <i class="ph-bold ph-image text-indigo-500 group-hover:scale-110 transition-transform"></i>
+                        <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Upload Custom Art</span>
+                        <input type="file" accept="image/*" class="hidden" onchange="handleArtUpload(event)">
+                    </label>
                 </div>
 
                 <div class="space-y-2">
@@ -480,6 +486,20 @@
             updatePreview(); 
         }
 
+        function handleArtUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                tempPass.bg = `url(${e.target.result})`;
+                // Force backgroundSize to cover for uploaded images
+                document.getElementById('editor-card-front').style.backgroundSize = 'cover';
+                document.getElementById('editor-card-front').style.backgroundPosition = 'center';
+                updatePreview();
+            };
+            reader.readAsDataURL(file);
+        }
+
         function selectCategory(catId, icon) {
             tempPass.category = catId;
             tempPass.icon = icon;
@@ -596,6 +616,10 @@
             // Update Front
             const front = document.getElementById('editor-card-front');
             front.style.background = tempPass.bg;
+            if (tempPass.bg.startsWith('url')) {
+                front.style.backgroundSize = 'cover';
+                front.style.backgroundPosition = 'center';
+            }
             document.getElementById('card-pattern').className = `pattern-overlay ${tempPass.pattern}`;
             
             document.getElementById('prev-title').innerText = title;
@@ -677,7 +701,7 @@
                 item.className = "flex items-center gap-4 p-4 rounded-[1.5rem] bg-zinc-50 border border-zinc-100 btn-press cursor-pointer hover:bg-white shadow-sm transition-all";
                 item.onclick = () => showDetail(p.id);
                 item.innerHTML = `
-                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg relative overflow-hidden" style="background:${p.bg}">
+                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg relative overflow-hidden" style="background:${p.bg}; background-size: cover; background-position: center;">
                         <div class="absolute inset-0 ${p.pattern} opacity-30"></div>
                         <i class="ph-fill ${p.icon} text-xl relative z-10"></i>
                     </div>
@@ -699,7 +723,13 @@
             const isQR = p.format.includes('QR') || p.format.includes('DATA_MATRIX') || p.format.includes('AZTEC') || p.format.includes('PDF_417');
             container.className = `flip-container ${isQR ? 'aspect-qr' : 'aspect-barcode'}`;
 
-            document.getElementById('detail-card-front').style.background = p.bg;
+            const front = document.getElementById('detail-card-front');
+            front.style.background = p.bg;
+            if (p.bg.startsWith('url')) {
+                front.style.backgroundSize = 'cover';
+                front.style.backgroundPosition = 'center';
+            }
+            
             document.getElementById('detail-pattern').className = `pattern-overlay ${p.pattern}`;
             
             document.getElementById('detail-title').innerText = p.title;
@@ -750,5 +780,3 @@
     </script>
 </body>
 </html>
-
-
