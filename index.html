@@ -2,214 +2,780 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kitchen Remodel Budget Estimator</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>PassPocket Ultra</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
-        
+        :root {
+            --accent: #4f46e5;
+            --bg-main: #ffffff;
+            --card-radius: 1.5rem;
+            --btn-radius: 1rem;
+        }
+
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
+            background-color: var(--bg-main);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            overflow-x: hidden;
         }
 
-        .tier-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .tier-card:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
-
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 20px; height: 20px;
-            background: #2563eb; cursor: pointer; border-radius: 50%;
-            border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        /* View Transitions */
+        .view-section {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: var(--bg-main);
+            overflow-y: auto;
+            z-index: 10;
+            padding-bottom: 120px;
+            padding-top: env(safe-area-inset-top);
         }
 
-        @media print {
-            .no-print { display: none !important; }
-            body { background-color: white !important; padding: 0 !important; }
-            .tier-card { break-inside: avoid; border: 1px solid #e2e8f0 !important; box-shadow: none !important; margin-bottom: 2rem; }
-            .grid { display: block !important; }
+        .view-section.active {
+            display: flex;
+            animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- Dynamic Card System --- */
+        .flip-container {
+            perspective: 2000px;
+            width: 100%;
+            max-width: 380px;
+            margin: 0 auto;
+            transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .flip-container.aspect-barcode { aspect-ratio: 1.58/1; }
+        .flip-container.aspect-qr { aspect-ratio: 1/1.3; }
+
+        .flipper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform-style: preserve-3d;
+        }
+
+        .flip-container.flipped .flipper { transform: rotateY(180deg); }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: var(--card-radius);
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .card-back {
+            transform: rotateY(180deg);
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        /* --- Card Visuals --- */
+        .hologram-chip {
+            width: 45px;
+            height: 34px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 50%, #e2e8f0 100%);
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+        }
+        
+        .hologram-chip::after {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%; width: 200%; height: 200%;
+            background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.8) 50%, transparent 60%);
+            animation: shine 4s infinite;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%); }
+            20% { transform: translateX(100%) translateY(100%); }
+            100% { transform: translateX(100%) translateY(100%); }
+        }
+
+        /* Patterns */
+        .pattern-overlay {
+            position: absolute;
+            inset: 0;
+            opacity: 0.15;
+            mix-blend-mode: overlay;
+            pointer-events: none;
+        }
+        
+        .bg-noise { background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3BaseFilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/feTurbulence%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E"); }
+        .bg-geo { background-image: radial-gradient(rgba(255,255,255,0.2) 2px, transparent 2px); background-size: 20px 20px; }
+        .bg-waves { background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.1) 10px, rgba(255,255,255,0.1) 20px); }
+
+        /* UI Components */
+        .btn-press { transition: transform 0.1s; }
+        .btn-press:active { transform: scale(0.95); }
+
+        .input-focus:focus-within {
+            border-color: #000;
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(0,0,0,0.05);
+        }
+
+        .category-chip {
+            padding: 0.5rem 1rem;
+            border-radius: 99px;
+            background: #f4f4f5;
+            border: 1px solid transparent;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+            color: #71717a;
+        }
+        .category-chip.active {
+            background: #18181b;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 48px);
+            max-width: 400px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 2rem;
+            padding: 0.75rem;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 100;
+            box-shadow: 0 15px 35px -5px rgba(0,0,0,0.1);
+        }
+
+        .barcode-wrapper svg, .barcode-wrapper canvas {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        #file-input { display: none; }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="antialiased">
 
-    <div class="max-w-6xl mx-auto">
-        <!-- Header -->
-        <header class="text-center mb-8">
-            <h1 class="text-4xl font-black text-slate-900 mb-2 tracking-tight">KITCHEN PROJECT ESTIMATOR</h1>
-            <p class="text-slate-500 font-medium">Professional Budgeting & Vendor-Adjusted Analysis</p>
+    <!-- HOME VIEW -->
+    <div id="view-home" class="view-section active flex-col">
+        <header class="px-6 pt-10 pb-6 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-extrabold tracking-tighter">Zebi</h1>
+                <p class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Juice Free Wallet</p>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center border border-zinc-200">
+                <i class="ph-bold ph-user text-zinc-600"></i>
+            </div>
         </header>
 
-        <!-- Configuration Panel -->
-        <div class="no-print bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Home Value -->
-                <div class="space-y-3">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-widest">Home Value</label>
-                    <div class="relative">
-                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
-                        <input type="number" id="homeValue" value="450000" class="w-full pl-7 pr-3 py-2 border rounded-lg font-bold text-slate-800">
-                    </div>
-                    <input type="range" id="homeSlider" min="100000" max="2000000" step="10000" value="450000" class="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer">
-                </div>
-
-                <!-- Cabinet Vendor -->
-                <div class="space-y-3">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-widest">Cabinetry Vendor (Pricing Grade)</label>
-                    <select id="cabVendor" class="w-full p-2 border rounded-lg bg-slate-50 font-medium text-slate-700 outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="woodmark" data-multiplier="1.15">American Woodmark (Semi-Custom - Mid)</option>
-                        <option value="kraftmaid" data-multiplier="1.35">KraftMaid (Vantage/Premium - High)</option>
-                        <option value="hampton" data-multiplier="0.85">Hampton Bay Designer (Frameless - Entry)</option>
-                        <option value="decorators" selected data-multiplier="1.00">Home Decorators (All-Plywood - Standard)</option>
-                    </select>
-                    <div id="cabDetails" class="text-[11px] text-slate-500 leading-tight italic"></div>
-                </div>
-
-                <!-- Countertop Vendor -->
-                <div class="space-y-3">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-widest">Countertop Vendor (Pricing Grade)</label>
-                    <select id="countVendor" class="w-full p-2 border rounded-lg bg-slate-50 font-medium text-slate-700 outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="msi" selected data-multiplier="1.00">MSI (Q Premium Quartz - Standard)</option>
-                        <option value="silestone" data-multiplier="1.20">Silestone (Hybriq+ Tech - Mid)</option>
-                        <option value="caesarstone" data-multiplier="1.25">Caesarstone (Supernatural - High)</option>
-                        <option value="dekton" data-multiplier="1.45">Dekton (Sintered Stone - Ultra)</option>
-                    </select>
-                    <div id="countDetails" class="text-[11px] text-slate-500 leading-tight italic"></div>
-                </div>
+        <main class="px-6 flex-1 pb-32">
+            <!-- Filter Scroll -->
+            <div class="flex gap-2 overflow-x-auto no-scrollbar mb-6 pb-2" id="home-filters">
+                <button onclick="filterPasses('all')" class="category-chip active">All</button>
+                <button onclick="filterPasses('Travel')" class="category-chip">Travel</button>
+                <button onclick="filterPasses('Gym')" class="category-chip">Gym</button>
+                <button onclick="filterPasses('Event')" class="category-chip">Event</button>
+                <button onclick="filterPasses('Health')" class="category-chip">Health</button>
+                <button onclick="filterPasses('Store')" class="category-chip">Store</button>
             </div>
 
-            <div class="mt-6 flex justify-center">
-                <button onclick="window.print()" class="bg-slate-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-slate-800 transition-colors flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                    Print or Save as PDF
-                </button>
+            <div id="pass-grid" class="grid grid-cols-1 gap-4"></div>
+            
+            <div id="empty-state" class="hidden py-32 flex flex-col items-center justify-center text-center px-12 opacity-40">
+                <div class="w-20 h-20 rounded-3xl bg-zinc-100 flex items-center justify-center mb-4">
+                    <i class="ph-fill ph-wallet text-4xl text-zinc-400"></i>
+                </div>
+                <p class="text-xs font-bold uppercase tracking-widest text-zinc-500">Wallet is empty</p>
             </div>
-        </div>
-
-        <!-- Tiers Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="tiersGrid">
-            <!-- Tiers are injected via JS -->
-        </div>
-
-        <footer class="mt-12 pt-8 border-t border-slate-200 text-center">
-            <div class="flex flex-col md:flex-row justify-between items-center text-[10px] text-slate-400 uppercase font-bold tracking-widest gap-4">
-                <span>© 2025 Budget Planning Tool</span>
-                <span id="currentDate"></span>
-                <span>Real-Time Vendor Multiplier System Active</span>
-            </div>
-        </footer>
+        </main>
     </div>
 
-    <script>
-        const VENDOR_DATA = {
-            cabinets: {
-                woodmark: "American Woodmark: $180–$350 per linear ft. Framed construction. Better than entry level, reliable semi-custom options.",
-                kraftmaid: "KraftMaid: $250–$500+ per linear ft. High-end semi-custom. Vantage series includes all-plywood boxes and premium finishes.",
-                hampton: "Hampton Bay Designer: $100–$200 per linear ft. Entry-level pricing, frameless build. Best for tight budgets and flips.",
-                decorators: "Home Decorators: $150–$300 per linear ft. All-plywood standard at a retail price point. Solid 'Pro' choice."
-            },
-            countertops: {
-                msi: "MSI Q Quartz: $55–$95 per sq ft installed. Broad accessibility and competitive standard pricing for quartz.",
-                silestone: "Silestone: $75–$120 per sq ft installed. Proprietary Hybriq+ technology with enhanced durability and sustainable manufacturing.",
-                caesarstone: "Caesarstone: $80–$140 per sq ft installed. Premium designer series with highly detailed natural stone aesthetics.",
-                dekton: "Dekton: $100–$180+ per sq ft installed. Superior heat/scratch resistance. Sintered stone requires specialized fabrication."
-            }
-        };
+    <!-- EDITOR VIEW -->
+    <div id="view-editor" class="view-section flex-col !pb-0">
+        <nav class="p-6 flex items-center justify-between sticky top-0 bg-white z-20 border-b border-zinc-100">
+            <button onclick="navigate('view-home')" class="w-10 h-10 rounded-xl bg-zinc-50 flex items-center justify-center text-black btn-press border border-zinc-200">
+                <i class="ph-bold ph-arrow-left"></i>
+            </button>
+            <h2 class="text-xs font-black uppercase tracking-widest">Card Creator</h2>
+            <div class="w-10"></div>
+        </nav>
 
-        const homeValueInput = document.getElementById('homeValue');
-        const homeSlider = document.getElementById('homeSlider');
-        const cabVendorSelect = document.getElementById('cabVendor');
-        const countVendorSelect = document.getElementById('countVendor');
-        
-        document.getElementById('currentDate').innerText = new Date().toLocaleDateString();
-
-        function updateVendorDescriptions() {
-            document.getElementById('cabDetails').innerText = VENDOR_DATA.cabinets[cabVendorSelect.value];
-            document.getElementById('countDetails').innerText = VENDOR_DATA.countertops[countVendorSelect.value];
-        }
-
-        const formatCurrency = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
-
-        function renderTiers() {
-            const val = parseFloat(homeValueInput.value) || 0;
-            const cabName = cabVendorSelect.options[cabVendorSelect.selectedIndex].text;
-            const countName = countVendorSelect.options[countVendorSelect.selectedIndex].text;
-            
-            // Real Data Multipliers
-            const cabMult = parseFloat(cabVendorSelect.options[cabVendorSelect.selectedIndex].dataset.multiplier);
-            const countMult = parseFloat(countVendorSelect.options[countVendorSelect.selectedIndex].dataset.multiplier);
-            
-            // Weighted Vendor Impact (Cabinets usually represent 35-40% of budget, Countertops 15%)
-            const totalVendorPremium = (cabMult * 0.70) + (countMult * 0.30);
-
-            const config = [
-                { label: 'Minor Remodel', perc: 0.05, roi: 0.80, accent: 'blue', desc: 'In-stock cabinets, laminate/solid surface counters, no footprint change.' },
-                { label: 'Major Remodel', perc: 0.10, roi: 0.62, accent: 'indigo', desc: 'Semi-custom cabinets, natural stone counters, updated appliances.' },
-                { label: 'Upscale Major', perc: 0.15, roi: 0.60, accent: 'slate', desc: 'Full custom, smart appliances, waterfall edges, layout reconfiguration.' }
-            ];
-
-            const grid = document.getElementById('tiersGrid');
-            grid.innerHTML = '';
-
-            config.forEach(tier => {
-                // Adjust budget based on the selected vendors' price grade
-                const baseTotal = val * tier.perc;
-                const adjustedTotal = baseTotal * totalVendorPremium;
-
-                const gridItem = `
-                    <div class="tier-card bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col">
-                        <div class="p-6 bg-slate-50 border-b border-slate-200">
-                            <h3 class="text-xs font-black text-${tier.accent}-600 uppercase tracking-widest mb-1">${tier.label}</h3>
-                            <div class="text-3xl font-black text-slate-900">${formatCurrency(adjustedTotal)}</div>
-                            <div class="mt-4 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-tight">
-                                <div class="bg-green-100 text-green-700 px-2 py-1 rounded">Resale Value: ${formatCurrency(adjustedTotal * tier.roi)}</div>
-                                <div class="bg-slate-200 text-slate-600 px-2 py-1 rounded">Base: ${(tier.perc*100)}%</div>
-                                <div class="bg-blue-100 text-blue-700 px-2 py-1 rounded">Grade: ${totalVendorPremium.toFixed(2)}x</div>
-                            </div>
-                        </div>
-                        <div class="p-6 flex-grow space-y-4">
-                            <div>
-                                <h4 class="text-[10px] font-black text-slate-400 uppercase mb-2">Vendor Selection</h4>
-                                <div class="flex items-start gap-2 mb-2">
-                                    <div class="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0"></div>
-                                    <p class="text-xs text-slate-700 font-medium"><span class="text-slate-400">Cabinetry:</span> ${cabName}</p>
-                                </div>
-                                <div class="flex items-start gap-2">
-                                    <div class="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0"></div>
-                                    <p class="text-xs text-slate-700 font-medium"><span class="text-slate-400">Surface:</span> ${countName}</p>
+        <div class="px-6 pb-32 space-y-10 pt-6">
+            <!-- Preview -->
+            <div id="editor-flip-box" class="flip-container aspect-barcode" onclick="toggleFlip(this)">
+                <div class="flipper">
+                    <div id="editor-card-front" class="card-front">
+                        <div class="pattern-overlay bg-noise" id="card-pattern"></div>
+                        <div class="p-8 h-full flex flex-col justify-between text-white relative z-10">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 id="prev-title" class="text-2xl font-bold leading-tight drop-shadow-md">New Pass</h3>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <span class="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow"></span>
+                                        <p id="prev-cat" class="text-[10px] font-bold uppercase tracking-widest opacity-90">General</p>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="pt-4 border-t border-slate-100">
-                                <h4 class="text-[10px] font-black text-slate-400 uppercase mb-2">Itemized Estimation</h4>
-                                <div class="space-y-1.5">
-                                    <div class="flex justify-between text-[11px]"><span class="text-slate-500">Cabinets (Vendor Adjusted)</span><span class="font-bold">${formatCurrency(adjustedTotal * 0.35)}</span></div>
-                                    <div class="flex justify-between text-[11px]"><span class="text-slate-500">Professional Labor</span><span class="font-bold">${formatCurrency(adjustedTotal * 0.25)}</span></div>
-                                    <div class="flex justify-between text-[11px]"><span class="text-slate-500">Countertops (Vendor Adjusted)</span><span class="font-bold">${formatCurrency(adjustedTotal * 0.15)}</span></div>
-                                    <div class="flex justify-between text-[11px]"><span class="text-slate-500">Appliances & Fixtures</span><span class="font-bold">${formatCurrency(adjustedTotal * 0.15)}</span></div>
-                                    <div class="flex justify-between text-[11px]"><span class="text-slate-500">Misc/Contingency (10%)</span><span class="font-bold">${formatCurrency(adjustedTotal * 0.10)}</span></div>
+                            <div class="flex justify-between items-end">
+                                <div id="prev-icon-box" class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 shadow-lg">
+                                    <i id="prev-icon" class="ph ph-ticket text-2xl drop-shadow-sm"></i>
+                                </div>
+                                <div class="flex flex-col items-end">
+                                    <i class="ph ph-contactless-payment text-2xl opacity-60"></i>
+                                    <p class="text-[8px] font-mono opacity-50 mt-1">NFC / ID</p>
                                 </div>
                             </div>
-                        </div>
-                        <div class="px-6 py-4 bg-slate-50 text-[11px] font-medium text-slate-700 leading-relaxed border-t border-slate-100">
-                            <span class="text-slate-400 uppercase font-bold text-[9px] block mb-1">Scope:</span>
-                            ${tier.desc}
                         </div>
                     </div>
+                    <div class="card-back">
+                        <div id="editor-barcode-preview" class="barcode-wrapper"></div>
+                        <p class="text-[9px] font-bold text-zinc-400 uppercase mt-4 tracking-widest">Code Preview</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="space-y-6">
+                <div class="space-y-2">
+                    <label class="text-[10px] font-bold uppercase text-zinc-400 px-1">Name</label>
+                    <input type="text" id="inp-title" oninput="updatePreview()" class="w-full bg-zinc-50 p-4 rounded-2xl font-semibold outline-none border-2 border-transparent input-focus transition-all text-sm" placeholder="e.g. Starbucks">
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-[10px] font-bold uppercase text-zinc-400 px-1">Category</label>
+                    <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1" id="editor-categories">
+                        <!-- Injected JS -->
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-[10px] font-bold uppercase text-zinc-400 px-1">Aesthetics</label>
+                    <div class="flex gap-4 overflow-x-auto no-scrollbar py-2" id="color-palette"></div>
+                    
+                    <label class="mt-2 w-full py-3 rounded-2xl border border-dashed border-zinc-300 flex items-center justify-center gap-2 cursor-pointer hover:bg-zinc-50 transition active:scale-95 group">
+                        <i class="ph-bold ph-image text-indigo-500 group-hover:scale-110 transition-transform"></i>
+                        <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Upload Custom Art</span>
+                        <input type="file" accept="image/*" class="hidden" onchange="handleArtUpload(event)">
+                    </label>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-[10px] font-bold uppercase text-zinc-400 px-1">Data</label>
+                    <input type="text" id="inp-manual-data" oninput="updatePreview()" class="w-full bg-zinc-50 p-4 rounded-2xl font-mono text-xs outline-none border-2 border-transparent input-focus" placeholder="Code String">
+                </div>
+
+                <div class="pt-4">
+                    <button id="btn-save" onclick="savePass()" class="w-full bg-[#18181b] text-white py-5 rounded-2xl font-bold uppercase text-[11px] tracking-[0.2em] btn-press shadow-xl">
+                        Save to Wallet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCANNER VIEW -->
+    <div id="view-scanner" class="view-section flex-col z-[200] !bg-black !pb-0">
+        <input type="file" id="file-input" accept="image/*" onchange="handleFileUpload(event)">
+        
+        <div class="absolute top-0 left-0 right-0 p-6 z-20 flex justify-between items-start pt-12">
+            <button onclick="navigate('view-home')" class="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md text-white btn-press flex items-center justify-center border border-white/10">
+                <i class="ph-bold ph-x"></i>
+            </button>
+            <p class="text-white text-[10px] font-black uppercase tracking-widest opacity-50 mt-4">Scanner</p>
+            <div class="w-12"></div>
+        </div>
+        
+        <div class="flex-1 flex flex-col items-center justify-center relative">
+            <div id="reader" style="width: 100%; height: 100%;"></div>
+            <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
+                <div class="w-72 h-48 border-2 border-white/40 rounded-[2rem] relative overflow-hidden shadow-[0_0_100px_rgba(255,255,255,0.1)]">
+                    <div id="scan-feedback" class="absolute inset-0 border-[6px] border-white opacity-0 transition-opacity duration-200 rounded-[1.8rem]"></div>
+                    <div class="absolute top-1/2 left-4 right-4 h-[2px] bg-red-500 shadow-[0_0_15px_red] opacity-50"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="p-10 flex flex-col gap-4 pb-20 items-center justify-center w-full max-w-sm mx-auto">
+            <div class="grid grid-cols-2 gap-4 w-full">
+                <button onclick="document.getElementById('file-input').click()" class="bg-white/10 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-widest py-4 rounded-2xl btn-press border border-white/10 flex items-center justify-center gap-2">
+                    <i class="ph-bold ph-image"></i> Upload
+                </button>
+                <button onclick="prepareEditor('', 'CODE_128')" class="bg-white/10 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-widest py-4 rounded-2xl btn-press border border-white/10 flex items-center justify-center gap-2">
+                    <i class="ph-bold ph-keyboard"></i> Manual
+                </button>
+            </div>
+            <p id="scan-status" class="text-white/30 text-[9px] font-bold uppercase tracking-widest h-4 mt-2"></p>
+        </div>
+    </div>
+
+    <!-- DETAIL VIEW -->
+    <div id="view-pass" class="view-section flex-col !pb-0">
+        <header class="p-6 flex justify-between items-center sticky top-0 bg-white/90 backdrop-blur-md z-10">
+            <button onclick="navigate('view-home')" class="w-12 h-12 rounded-2xl bg-zinc-50 flex items-center justify-center text-black btn-press border border-zinc-200">
+                <i class="ph-bold ph-arrow-left"></i>
+            </button>
+            <button onclick="deletePass()" class="w-12 h-12 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center btn-press border border-red-100">
+                <i class="ph-bold ph-trash"></i>
+            </button>
+        </header>
+
+        <div class="px-6 py-10 flex flex-col items-center flex-1">
+            <div id="detail-flip-box" class="flip-container aspect-barcode" onclick="toggleFlip(this)">
+                <div class="flipper">
+                    <div id="detail-card-front" class="card-front">
+                        <div class="pattern-overlay bg-noise" id="detail-pattern"></div>
+                        <div class="p-10 h-full flex flex-col justify-between text-white relative z-10">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h2 id="detail-title" class="text-3xl font-extrabold tracking-tight"></h2>
+                                    <p id="detail-cat" class="text-[10px] font-bold uppercase opacity-80 mt-1 tracking-widest"></p>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-end">
+                                <div id="detail-logo" class="w-16 h-16 rounded-3xl flex items-center justify-center bg-white/20 border border-white/20 backdrop-blur-sm shadow-md"></div>
+                                <div class="flex flex-col items-end">
+                                    <i class="ph ph-contactless-payment text-3xl opacity-60"></i>
+                                    <span class="text-[9px] font-mono uppercase opacity-50 mt-1">VERIFIED</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-back">
+                        <div id="detail-barcode" class="barcode-wrapper scale-110"></div>
+                        <p id="detail-data" class="font-mono text-[10px] font-bold text-zinc-400 mt-8 tracking-widest"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-12 flex items-center gap-2 opacity-30 animate-pulse">
+                <i class="ph-bold ph-hand-tap"></i>
+                <p class="text-[10px] font-black uppercase tracking-[0.3em]">Tap to Flip</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM NAV -->
+    <nav id="main-nav" class="bottom-nav">
+        <button onclick="navigate('view-home')" class="nav-btn flex flex-col items-center gap-1 text-black">
+            <i class="ph-fill ph-house text-2xl"></i>
+        </button>
+        <button onclick="startScanner()" class="w-14 h-14 bg-black rounded-full flex items-center justify-center text-white -mt-10 border-[6px] border-white shadow-2xl btn-press">
+            <i class="ph-bold ph-plus text-xl"></i>
+        </button>
+        <button onclick="navigate('view-home')" class="nav-btn flex flex-col items-center gap-1 text-zinc-300">
+            <i class="ph-fill ph-gear-six text-2xl"></i>
+        </button>
+    </nav>
+
+    <script>
+        const DB_KEY = 'pocket_ultra_v7';
+        let passes = JSON.parse(localStorage.getItem(DB_KEY)) || [];
+        let tempPass = { 
+            bg: 'linear-gradient(135deg, #4f46e5 0%, #a855f7 100%)', 
+            data: '', 
+            format: 'CODE_128', 
+            category: 'Member', 
+            icon: 'ph-identification-card',
+            pattern: 'bg-noise'
+        };
+        let activeId = null;
+        let qrScanner = null;
+        let isProcessingScan = false;
+
+        // Expanded Category System
+        const categories = [
+            { id: 'General', icon: 'ph-ticket' },
+            { id: 'Travel', icon: 'ph-airplane-tilt' },
+            { id: 'Member', icon: 'ph-identification-card' },
+            { id: 'Store', icon: 'ph-shopping-bag' },
+            { id: 'Gym', icon: 'ph-barbell' },
+            { id: 'Event', icon: 'ph-confetti' },
+            { id: 'Health', icon: 'ph-heartbeat' },
+            { id: 'Identity', icon: 'ph-fingerprint' },
+            { id: 'Coupon', icon: 'ph-tag' },
+            { id: 'Payment', icon: 'ph-credit-card' }
+        ];
+
+        // Richer Gradients
+        const themes = [
+            { bg: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', name: 'Indigo' },
+            { bg: 'linear-gradient(135deg, #000000 0%, #18181b 100%)', name: 'Midnight' },
+            { bg: 'linear-gradient(135deg, #ec4899 0%, #be185d 100%)', name: 'Berry' },
+            { bg: 'linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)', name: 'Sunset' },
+            { bg: 'linear-gradient(135deg, #10b981 0%, #047857 100%)', name: 'Forest' },
+            { bg: 'linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%)', name: 'Ocean' },
+            { bg: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)', name: 'Dream' },
+            { bg: 'linear-gradient(135deg, #475569 0%, #1e293b 100%)', name: 'Slate' }
+        ];
+
+        window.onload = () => {
+            renderHome();
+            initEditor();
+        };
+
+        function navigate(id) {
+            stopScanner();
+            document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            
+            const nav = document.getElementById('main-nav');
+            nav.style.display = (id === 'view-home') ? 'flex' : 'none';
+            
+            document.querySelectorAll('.flip-container').forEach(c => c.classList.remove('flipped'));
+            window.scrollTo(0,0);
+            if (navigator.vibrate) navigator.vibrate(5);
+        }
+
+        function toggleFlip(el) {
+            el.classList.toggle('flipped');
+            if (navigator.vibrate) navigator.vibrate(10);
+        }
+
+        function initEditor() {
+            // Render Categories
+            const catContainer = document.getElementById('editor-categories');
+            catContainer.innerHTML = categories.map(c => `
+                <button onclick="selectCategory('${c.id}', '${c.icon}')" class="category-chip ${c.id === 'General' ? 'active' : ''}">${c.id}</button>
+            `).join('');
+
+            // Render Themes
+            const themeContainer = document.getElementById('color-palette');
+            themeContainer.innerHTML = themes.map(t => `
+                <button onclick="setBg('${t.bg}')" class="w-10 h-10 rounded-full shrink-0 border-4 border-white shadow-sm transition-transform active:scale-90" style="background:${t.bg}"></button>
+            `).join('');
+        }
+
+        function setBg(bg) { 
+            tempPass.bg = bg; 
+            updatePreview(); 
+        }
+
+        function handleArtUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                tempPass.bg = `url(${e.target.result})`;
+                // Force backgroundSize to cover for uploaded images
+                document.getElementById('editor-card-front').style.backgroundSize = 'cover';
+                document.getElementById('editor-card-front').style.backgroundPosition = 'center';
+                updatePreview();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function selectCategory(catId, icon) {
+            tempPass.category = catId;
+            tempPass.icon = icon;
+            
+            // Set pattern based on category logic (optional flavor)
+            if(catId === 'Travel') tempPass.pattern = 'bg-geo';
+            else if(catId === 'Event') tempPass.pattern = 'bg-waves';
+            else tempPass.pattern = 'bg-noise';
+
+            document.querySelectorAll('#editor-categories button').forEach(b => {
+                b.classList.toggle('active', b.innerText === catId.toUpperCase() || b.innerText === catId);
+            });
+            updatePreview();
+        }
+
+        // --- SCANNER SYSTEM ---
+        function startScanner() {
+            navigate('view-scanner');
+            isProcessingScan = false;
+            document.getElementById('scan-status').innerText = "Camera Active";
+            
+            setTimeout(() => {
+                const formats = [
+                    Html5QrcodeSupportedFormats.QR_CODE,
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.CODE_39,
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.EAN_8,
+                    Html5QrcodeSupportedFormats.UPC_A,
+                    Html5QrcodeSupportedFormats.UPC_E,
+                    Html5QrcodeSupportedFormats.DATA_MATRIX,
+                    Html5QrcodeSupportedFormats.AZTEC,
+                    Html5QrcodeSupportedFormats.PDF_417
+                ];
+
+                qrScanner = new Html5Qrcode("reader", { verbose: false, formatsToSupport: formats });
+
+                qrScanner.start(
+                    { facingMode: "environment" },
+                    { fps: 20, qrbox: { width: 250, height: 250 } },
+                    (text, result) => {
+                        if (isProcessingScan) return;
+                        isProcessingScan = true;
+
+                        // Visual feedback
+                        document.getElementById('scan-feedback').style.opacity = '1';
+                        if (navigator.vibrate) navigator.vibrate(40);
+                        
+                        let format = 'CODE_128';
+                        if (result && result.result && result.result.format) {
+                            format = result.result.format.formatName || 'CODE_128';
+                        }
+                        
+                        setTimeout(() => {
+                            qrScanner.stop().then(() => prepareEditor(text, format)).catch(() => prepareEditor(text, format));
+                        }, 600);
+                    },
+                    () => {}
+                ).catch(err => {
+                    console.error(err);
+                    document.getElementById('scan-status').innerText = "Access Denied";
+                });
+            }, 400);
+        }
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            document.getElementById('scan-status').innerText = "Processing...";
+            if (qrScanner && qrScanner.isScanning) await qrScanner.stop();
+
+            const fileScanner = new Html5Qrcode("reader");
+            try {
+                const result = await fileScanner.scanFileV2(file, true);
+                if (navigator.vibrate) navigator.vibrate(60);
+                const format = (result.result && result.result.format) ? result.result.format.formatName : 'CODE_128';
+                prepareEditor(result.decodedText, format);
+            } catch (err) {
+                console.error(err);
+                document.getElementById('scan-status').innerText = "No code found";
+                setTimeout(() => startScanner(), 1500);
+            }
+        }
+
+        function stopScanner() {
+            if (qrScanner && qrScanner.isScanning) qrScanner.stop().catch(() => {});
+        }
+
+        // --- EDITOR & RENDER ---
+        function prepareEditor(data, format) {
+            tempPass.data = data;
+            tempPass.format = format;
+            document.getElementById('inp-title').value = '';
+            document.getElementById('inp-manual-data').value = data;
+            // Reset to defaults
+            selectCategory('General', 'ph-ticket');
+            navigate('view-editor');
+            updatePreview();
+        }
+
+        function updatePreview() {
+            const title = document.getElementById('inp-title').value || "Card Name";
+            const container = document.getElementById('editor-flip-box');
+            
+            // Aspect Ratio logic
+            const isQR = tempPass.format.includes('QR') || 
+                         tempPass.format.includes('DATA_MATRIX') || 
+                         tempPass.format.includes('AZTEC') ||
+                         tempPass.format.includes('PDF_417');
+
+            container.className = `flip-container ${isQR ? 'aspect-qr' : 'aspect-barcode'}`;
+
+            // Update Front
+            const front = document.getElementById('editor-card-front');
+            front.style.background = tempPass.bg;
+            if (tempPass.bg.startsWith('url')) {
+                front.style.backgroundSize = 'cover';
+                front.style.backgroundPosition = 'center';
+            }
+            document.getElementById('card-pattern').className = `pattern-overlay ${tempPass.pattern}`;
+            
+            document.getElementById('prev-title').innerText = title;
+            document.getElementById('prev-cat').innerText = tempPass.category;
+            document.getElementById('prev-icon').className = `ph ${tempPass.icon} text-2xl drop-shadow-sm`;
+
+            // Update Back
+            const bc = document.getElementById('editor-barcode-preview');
+            bc.innerHTML = '';
+            if (tempPass.data) renderCode(bc, tempPass.data, tempPass.format, isQR ? 220 : 280);
+        }
+
+        function renderCode(target, data, format, size) {
+            const isQR = format.includes('QR') || format.includes('DATA_MATRIX') || format.includes('AZTEC') || format.includes('PDF_417');
+
+            if (isQR) {
+                new QRCode(target, { text: data, width: size, height: size, correctLevel: QRCode.CorrectLevel.H });
+            } else {
+                const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                target.appendChild(svg);
+                try {
+                    // Normalize format string for JsBarcode
+                    let cleanFormat = format.replace(/_/g, '').replace('EAN13', 'EAN13').replace('UPCA', 'UPC');
+                    // Fallback map
+                    if (!['CODE128', 'CODE39', 'EAN13', 'EAN8', 'UPC'].includes(cleanFormat)) cleanFormat = 'CODE128';
+                    
+                    JsBarcode(svg, data, {
+                        format: cleanFormat,
+                        width: 2,
+                        height: 80,
+                        displayValue: false,
+                        margin: 0
+                    });
+                } catch (e) {
+                    // Safe fallback
+                    JsBarcode(svg, data, { format: "CODE128", width: 2, height: 80, displayValue: false });
+                }
+            }
+        }
+
+        function savePass() {
+            const btn = document.getElementById('btn-save');
+            const title = document.getElementById('inp-title').value.trim() || "Untitled Card";
+            const data = document.getElementById('inp-manual-data').value;
+            
+            if (!data) return;
+
+            btn.innerText = "SAVING...";
+            btn.style.opacity = "0.7";
+
+            setTimeout(() => {
+                const pass = { ...tempPass, id: Date.now(), title, data }; // Ensure data is synced from input
+                passes.unshift(pass);
+                localStorage.setItem(DB_KEY, JSON.stringify(passes));
+                
+                if (navigator.vibrate) navigator.vibrate([20, 40]);
+                
+                btn.innerText = "SAVE TO WALLET";
+                btn.style.opacity = "1";
+                renderHome();
+                navigate('view-home');
+            }, 100);
+        }
+
+        // --- HOME & DETAIL ---
+        function renderHome() {
+            const grid = document.getElementById('pass-grid');
+            const empty = document.getElementById('empty-state');
+            grid.innerHTML = '';
+
+            if (passes.length === 0) {
+                empty.classList.remove('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+
+            passes.forEach(p => {
+                const item = document.createElement('div');
+                item.className = "flex items-center gap-4 p-4 rounded-[1.5rem] bg-zinc-50 border border-zinc-100 btn-press cursor-pointer hover:bg-white shadow-sm transition-all";
+                item.onclick = () => showDetail(p.id);
+                item.innerHTML = `
+                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg relative overflow-hidden" style="background:${p.bg}; background-size: cover; background-position: center;">
+                        <div class="absolute inset-0 ${p.pattern} opacity-30"></div>
+                        <i class="ph-fill ${p.icon} text-xl relative z-10"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-sm text-zinc-900">${p.title}</h4>
+                        <span class="px-2 py-0.5 rounded-md bg-zinc-100 text-[9px] font-bold text-zinc-400 uppercase tracking-widest border border-zinc-200">${p.category}</span>
+                    </div>
+                    <i class="ph-bold ph-caret-right text-zinc-300 mr-2"></i>
                 `;
-                grid.insertAdjacentHTML('beforeend', gridItem);
+                grid.appendChild(item);
             });
         }
 
-        [homeValueInput, homeSlider, cabVendorSelect, countVendorSelect].forEach(el => {
-            el.addEventListener('input', () => {
-                if(el === homeValueInput) homeSlider.value = el.value;
-                if(el === homeSlider) homeValueInput.value = el.value;
-                updateVendorDescriptions();
-                renderTiers();
-            });
-        });
+        function showDetail(id) {
+            activeId = id;
+            const p = passes.find(x => x.id === id);
+            
+            const container = document.getElementById('detail-flip-box');
+            const isQR = p.format.includes('QR') || p.format.includes('DATA_MATRIX') || p.format.includes('AZTEC') || p.format.includes('PDF_417');
+            container.className = `flip-container ${isQR ? 'aspect-qr' : 'aspect-barcode'}`;
 
-        updateVendorDescriptions();
-        renderTiers();
+            const front = document.getElementById('detail-card-front');
+            front.style.background = p.bg;
+            if (p.bg.startsWith('url')) {
+                front.style.backgroundSize = 'cover';
+                front.style.backgroundPosition = 'center';
+            }
+            
+            document.getElementById('detail-pattern').className = `pattern-overlay ${p.pattern}`;
+            
+            document.getElementById('detail-title').innerText = p.title;
+            document.getElementById('detail-cat').innerText = p.category;
+            document.getElementById('detail-data').innerText = p.data;
+            document.getElementById('detail-logo').innerHTML = `<i class="ph-fill ${p.icon} text-3xl text-white drop-shadow-sm"></i>`;
+            
+            const bc = document.getElementById('detail-barcode');
+            bc.innerHTML = '';
+            renderCode(bc, p.data, p.format, isQR ? 240 : 300);
+            
+            navigate('view-pass');
+        }
+
+        function filterPasses(cat) {
+            document.querySelectorAll('#home-filters button').forEach(b => {
+                b.classList.toggle('active', b.innerText === cat);
+            });
+            // Simple DOM filtering for speed
+            const grid = document.getElementById('pass-grid');
+            Array.from(grid.children).forEach(child => {
+                const catSpan = child.querySelector('span');
+                if (cat === 'all' || catSpan.innerText === cat.toUpperCase()) {
+                    child.style.display = 'flex';
+                } else {
+                    child.style.display = 'none';
+                }
+            });
+        }
+
+        function deletePass() {
+            if (confirm("Delete this card?")) {
+                passes = passes.filter(x => x.id !== activeId);
+                localStorage.setItem(DB_KEY, JSON.stringify(passes));
+                renderHome();
+                navigate('view-home');
+            }
+        }
+
+        function clearAllData() {
+            if (confirm("Reset application data?")) {
+                passes = [];
+                localStorage.removeItem(DB_KEY);
+                renderHome();
+                navigate('view-home');
+            }
+        }
     </script>
 </body>
 </html>
